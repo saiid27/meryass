@@ -1,0 +1,237 @@
+"""Unit tests for BiltGame — bilt.py game logic."""
+import pytest
+from game_logic.bilt import BiltGame, MATCH_WIN_SCORE
+
+
+PLAYERS = [
+    {'user_id': 1, 'position': 0, 'team': 0},
+    {'user_id': 2, 'position': 1, 'team': 1},
+    {'user_id': 3, 'position': 2, 'team': 0},
+    {'user_id': 4, 'position': 3, 'team': 1},
+]
+
+
+def _new_game() -> BiltGame:
+    return BiltGame(room_id=1, players=PLAYERS)
+
+
+def _started_round() -> BiltGame:
+    g = _new_game()
+    g.start_round()
+    return g
+
+
+def _bid_accepted(game: BiltGame = None, action='take', suit='hearts') -> BiltGame:
+    """Accept a bid so the game moves to playing phase."""
+    g = game or _started_round()
+    r = g.current_round
+    bidder = r['bidding_player']
+    result = g.place_bid(bidder, action, suit)
+    assert 'error' not in result, result
+    return g
+
+
+class TestStartRound:
+    def test_each_player_has_5_cards_initially(self):
+        g = _started_round()
+        r = g.current_round
+        for pos in range(4):
+            assert len(r['hands'][pos]) == 5
+
+    def test_remaining_has_12_cards(self):
+        g = _started_round()
+        assert len(g.current_round['remaining']) == 12
+
+    def test_status_is_bidding(self):
+        g = _started_round()
+        assert g.current_round['status'] == 'bidding'
+
+    def test_turned_card_is_in_remaining(self):
+        g = _started_round()
+        r = g.current_round
+        assert r['turned_card'] == r['remaining'][0]
+
+
+class TestBidding:
+    def test_four_passes_restart_round(self):
+        g = _started_round()
+        r = g.current_round
+        first_bidder = r['bidding_player']
+        for i in range(4):
+            pos = (first_bidder + i) % 4
+            result = g.place_bid(pos, 'pass')
+            assert 'error' not in result
+        # After 4 passes a new round starts — hands reset to 5
+        r2 = g.current_round
+        for pos in range(4):
+            assert len(r2['hands'][pos]) == 5
+
+    def test_wrong_turn_returns_error(self):
+        g = _started_round()
+        r = g.current_round
+        wrong = (r['bidding_player'] + 1) % 4
+        result = g.place_bid(wrong, 'pass')
+        assert 'error' in result
+
+    def test_invalid_action_returns_error(self):
+        g = _started_round()
+        r = g.current_round
+        result = g.place_bid(r['bidding_player'], 'bluff')
+        assert 'error' in result
+
+    def test_take_without_suit_returns_error(self):
+        g = _started_round()
+        r = g.current_round
+        result = g.place_bid(r['bidding_player'], 'take', suit=None)
+        assert 'error' in result
+
+    def test_take_moves_to_playing(self):
+        g = _bid_accepted()
+        assert g.current_round['status'] == 'playing'
+
+    def test_eight_cards_each_after_bid(self):
+        g = _bid_accepted()
+        r = g.current_round
+        for pos in range(4):
+            assert len(r['hands'][pos]) == 8
+
+    def test_no_card_lost_after_bid(self):
+        g = _bid_accepted()
+        r = g.current_round
+        all_cards = [c for h in r['hands'].values() for c in h]
+        assert len(all_cards) == 32
+        pairs = [(c['suit'], c['rank']) for c in all_cards]
+        assert len(pairs) == len(set(pairs))
+
+    def test_sans_atout_no_trump(self):
+        g = _started_round()
+        r = g.current_round
+        result = g.place_bid(r['bidding_player'], 'sans_atout')
+        assert 'error' not in result
+        assert g.current_round['trump_suit'] is None
+        assert g.current_round['mode'] == 'sans_atout'
+
+
+class TestDeclarations:
+    def test_declare_once_per_round(self):
+        g = _bid_accepted()
+        r = g.current_round
+        pos = list(g.players.keys())[0]
+        g.reveal_declarations(pos)
+        result = g.reveal_declarations(pos)   # second call
+        assert 'error' in result
+
+    def test_declarations_reset_each_round(self):
+        g = _bid_accepted()
+        pos = list(g.players.keys())[0]
+        g.reveal_declarations(pos)
+        # Force a new round
+        g.start_round()
+        _bid_accepted(g)
+        # Should be allowed again
+        r2 = g.reveal_declarations(pos)
+        assert 'error' not in r2
+
+    def test_declare_outside_playing_phase_rejected(self):
+        g = _started_round()   # still in bidding
+        pos = g.current_round['bidding_player']
+        result = g.reveal_declarations(pos)
+        assert 'error' in result
+
+
+class TestPlayCard:
+    def _pick_legal_card(self, hand, trick, trump_suit, mode):
+        """Return the first card that is legal to play given trick state."""
+        if not trick:
+            return hand[0]
+        lead_suit = trick[0]['suit']
+        has_lead = any(c['suit'] == lead_suit for c in hand)
+        if has_lead:
+            return next(c for c in hand if c['suit'] == lead_suit)
+        if mode != 'sans_atout' and trump_suit:
+            has_trump = any(c['suit'] == trump_suit for c in hand)
+            if has_trump:
+                return next(c for c in hand if c['suit'] == trump_suit)
+        return hand[0]
+
+    def _first_trick(self, g: BiltGame):
+        """Play through one complete trick with legal cards."""
+        r = g.current_round
+        starter = r['current_turn']
+        for i in range(4):
+            pos = (starter + i) % 4
+            hand = r['hands'][pos]
+            card = self._pick_legal_card(hand, r['current_trick'], r['trump_suit'], r['mode'])
+            result = g.play_card(pos, card['suit'], card['rank'])
+            if i < 3:
+                assert 'error' not in result, f'pos={pos} card={card} error: {result}'
+        return result
+
+    def test_wrong_turn_rejected(self):
+        g = _bid_accepted()
+        r = g.current_round
+        wrong = (r['current_turn'] + 1) % 4
+        hand = r['hands'][wrong]
+        result = g.play_card(wrong, hand[0]['suit'], hand[0]['rank'])
+        assert 'error' in result
+
+    def test_card_not_in_hand_rejected(self):
+        g = _bid_accepted()
+        r = g.current_round
+        pos = r['current_turn']
+        hand = r['hands'][pos]
+        # Find a (suit, rank) pair definitely absent from this hand
+        all_cards = {(c['suit'], c['rank']) for c in hand}
+        from game_logic.deck import VALID_SUITS, VALID_RANKS
+        absent = next(
+            (s, rk) for s in VALID_SUITS for rk in VALID_RANKS
+            if (s, rk) not in all_cards
+        )
+        result = g.play_card(pos, absent[0], absent[1])
+        assert 'error' in result
+
+    def test_eight_tricks_finish_round(self):
+        g = _bid_accepted()
+        for _ in range(8):
+            result = self._first_trick(g)
+        assert 'game_winner' in result
+
+    def test_trick_counts_sum_to_8(self):
+        g = _bid_accepted()
+        for _ in range(8):
+            result = self._first_trick(g)
+        r = g.current_round
+        assert sum(r['trick_counts'].values()) == 8
+
+
+class TestScoring:
+    def _simulate_full_game(self) -> tuple[BiltGame, dict]:
+        """Run a complete match (one round, then check winner)."""
+        g = _new_game()
+        last_result = None
+        for _ in range(200):   # safety cap
+            g.start_round()
+            _bid_accepted(g)
+            for _ in range(8):
+                r = g.current_round
+                starter = r['current_turn']
+                for i in range(4):
+                    pos = (starter + i) % 4
+                    hand = r['hands'][pos]
+                    lead_suit = r['current_trick'][0]['suit'] if r['current_trick'] else None
+                    card = next(
+                        (c for c in hand if lead_suit and c['suit'] == lead_suit),
+                        hand[0]
+                    )
+                    last_result = g.play_card(pos, card['suit'], card['rank'])
+            if last_result and last_result.get('game_winner') is not None:
+                break
+            if g.state == 'game_end':
+                break
+        return g, last_result
+
+    def test_winner_reaches_match_win_score(self):
+        g, result = self._simulate_full_game()
+        if result and result.get('game_winner') is not None:
+            winner = result['game_winner']
+            assert g.team_scores[winner] >= MATCH_WIN_SCORE

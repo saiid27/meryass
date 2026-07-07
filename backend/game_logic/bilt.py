@@ -1,0 +1,411 @@
+"""
+In-memory game-state manager for Bilt (Baloot).
+One BiltGame instance per active room, stored in game_sessions.
+
+Rules implemented
+-----------------
+- 32-card deck (7–A × 4 suits), 8 cards per player.
+- Phase-1 deal: 3 then 2 cards each (counter-clockwise). remaining[0] shown as
+  turned card (preview only — stays in remaining so phase-2 gets exactly 12).
+- Bidding: players bid clockwise from dealer+1. Actions: pass / take <suit> /
+  sans_atout. Four consecutive passes → redeal.
+- Phase-2 deal: 3 more cards each after bid accepted (total 8 per player).
+- Playing: trick-taking, 8 tricks per round.
+  - Must follow lead suit if able.
+  - If unable, must play trump if able (hokm mode).
+  - Trump J and 9 are the two strongest trump cards.
+- Declarations (announced once per player per round): Bella (K+Q of trump, 20pts),
+  Suite-3 (20pts), Suite-4+ (50pts).
+- Scoring: 162 total per round (152 card-points + 10 last-trick bonus).
+  Bidding team needs ≥82 to win the round; failure → other team gets all points.
+  Cot (8/8 tricks) doubles total points. Match won at 152 game-points.
+"""
+
+from typing import Optional
+from .deck import (
+    VALID_SUITS, VALID_RANKS, VALID_ACTIONS,
+    create_deck, deal_cards, deal_remaining,
+    card_value, resolve_trick, detect_declarations,
+)
+
+WIN_THRESHOLD_HOKM      = 82   # out of 162 card-trick points
+WIN_THRESHOLD_SANS_ATOUT = 66   # out of 130 card-trick points (no trump J/9 bonus)
+MATCH_WIN_SCORE = 152
+
+
+class BiltGame:
+    def __init__(self, room_id, players):
+        """
+        players: list of {'user_id': int, 'position': int, 'team': int}
+        """
+        self.room_id = room_id
+        self.players = {p['position']: p for p in players}
+        self.dealer_position = 0
+        self.current_round: Optional[dict] = None
+        self.team_scores: dict[int, int] = {0: 0, 1: 0}
+        self.state = 'idle'
+
+    # ------------------------------------------------------------------
+    # Round lifecycle
+    # ------------------------------------------------------------------
+
+    def start_round(self) -> dict:
+        deck = create_deck()
+        hands, remaining = deal_cards(deck)
+        # remaining[0] is shown as the "turned card" during bidding.
+        # It is NOT removed — phase-2 deals all 12 remaining cards.
+        turned_card = remaining[0]
+
+        self.current_round = {
+            'dealer': self.dealer_position,
+            'hands': hands,
+            'remaining': remaining,          # 12 cards including turned_card
+            'turned_card': turned_card,
+            'mode': None,                    # 'hokm' | 'sans_atout'
+            'trump_suit': None,
+            'bidding_player': (self.dealer_position + 1) % 4,
+            'bid_passes': 0,
+            'bidding_team': None,
+            'bidding_user_id': None,
+            'tricks': [],
+            'current_trick': [],
+            'trick_counts': {0: 0, 1: 0},
+            'current_turn': None,
+            'declared_positions': set(),     # tracks who already declared
+            'team_declarations': {0: 0, 1: 0},
+            'all_declarations': {},
+            'status': 'bidding',
+        }
+        self.state = 'bidding'
+        return self._public_state()
+
+    # ------------------------------------------------------------------
+    # Bidding
+    # ------------------------------------------------------------------
+
+    def place_bid(self, position: int, action: str, suit: Optional[str] = None) -> dict:
+        err = self._validate_bid(position, action, suit)
+        if err:
+            return {'error': err}
+
+        r = self.current_round
+
+        if action == 'pass':
+            r['bid_passes'] += 1
+            if r['bid_passes'] >= 4:
+                return self.start_round()   # redeal
+            r['bidding_player'] = (position + 1) % 4
+            return self._public_state()
+
+        # Bid accepted
+        if action == 'take':
+            r['mode'] = 'hokm'
+            r['trump_suit'] = suit
+        else:  # sans_atout
+            r['mode'] = 'sans_atout'
+            r['trump_suit'] = None
+
+        r['bidding_team'] = self.players[position]['team']
+        r['bidding_user_id'] = self.players[position]['user_id']
+
+        # Phase-2 deal — remaining has exactly 12 cards
+        r['hands'] = deal_remaining(r['hands'], r['remaining'])
+
+        # Pre-compute declarations for all players
+        for pos in self.players:
+            r['all_declarations'][pos] = detect_declarations(
+                r['hands'][pos], r['trump_suit'], r['mode']
+            )
+
+        r['status'] = 'playing'
+        r['current_turn'] = (self.dealer_position + 1) % 4
+        self.state = 'playing'
+        return self._public_state()
+
+    def _validate_bid(self, position: int, action: str, suit: Optional[str]) -> Optional[str]:
+        r = self.current_round
+        if not r or r['status'] != 'bidding':
+            return 'Not in bidding phase'
+        if r['bidding_player'] != position:
+            return 'Not your turn to bid'
+        if action not in VALID_ACTIONS:
+            return f'Invalid action: {action}'
+        if action == 'take' and suit not in VALID_SUITS:
+            return f'Invalid suit: {suit}'
+        return None
+
+    # ------------------------------------------------------------------
+    # Playing cards
+    # ------------------------------------------------------------------
+
+    def play_card(self, position: int, suit: str, rank: str) -> dict:
+        err = self._validate_play(position, suit, rank)
+        if err:
+            return {'error': err}
+
+        r = self.current_round
+        hand = r['hands'][position]
+        card = next(c for c in hand if c['suit'] == suit and c['rank'] == rank)
+
+        hand.remove(card)
+        r['current_trick'].append({'position': position, 'suit': suit, 'rank': rank})
+
+        if len(r['current_trick']) == 4:
+            return self._resolve_current_trick()
+
+        r['current_turn'] = (position + 1) % 4
+        return self._public_state()
+
+    def _validate_play(self, position: int, suit: str, rank: str) -> Optional[str]:
+        r = self.current_round
+        if not r or r['status'] != 'playing':
+            return 'Not in playing phase'
+        if r['current_turn'] != position:
+            return 'Not your turn'
+        if suit not in VALID_SUITS:
+            return f'Invalid suit: {suit}'
+        if rank not in VALID_RANKS:
+            return f'Invalid rank: {rank}'
+        hand = r['hands'][position]
+        if not any(c['suit'] == suit and c['rank'] == rank for c in hand):
+            return 'Card not in hand'
+        if not self._is_legal_play(position, suit):
+            return 'Invalid card play — must follow suit or trump rules'
+        return None
+
+    def _is_legal_play(self, position: int, suit: str) -> bool:
+        r = self.current_round
+        hand = r['hands'][position]
+        trick = r['current_trick']
+
+        if not trick:
+            return True  # leading — any card
+
+        lead_suit = trick[0]['suit']
+        trump_suit = r['trump_suit']
+        mode = r['mode']
+        has_lead = any(c['suit'] == lead_suit for c in hand)
+
+        if mode == 'sans_atout':
+            return suit == lead_suit if has_lead else True
+
+        # hokm mode
+        if suit == lead_suit:
+            return True
+        if has_lead:
+            return False  # must follow suit
+
+        # Can't follow — must play trump if available
+        has_trump = any(c['suit'] == trump_suit for c in hand)
+        if not has_trump:
+            return True
+        return suit == trump_suit
+
+    # ------------------------------------------------------------------
+    # Declarations
+    # ------------------------------------------------------------------
+
+    def reveal_declarations(self, position: int) -> dict:
+        r = self.current_round
+        if not r:
+            return {'error': 'No active round'}
+        if r['status'] != 'playing':
+            return {'error': 'Declarations only allowed during playing phase'}
+        if position in r['declared_positions']:
+            return {'error': 'Already declared this round'}
+
+        r['declared_positions'].add(position)
+        decls = r['all_declarations'].get(position, [])
+        team = self.players[position]['team']
+        total = sum(d['points'] for d in decls)
+        r['team_declarations'][team] += total
+        return {'declarations': decls, 'total': total}
+
+    # ------------------------------------------------------------------
+    # Trick resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_current_trick(self) -> dict:
+        r = self.current_round
+        trick_cards = r['current_trick']
+        winner_pos = resolve_trick(trick_cards, r['trump_suit'], r['mode'])
+        winner_team = self.players[winner_pos]['team']
+
+        points = sum(
+            card_value({'suit': c['suit'], 'rank': c['rank']}, r['trump_suit'], r['mode'])
+            for c in trick_cards
+        )
+        trick_number = len(r['tricks']) + 1
+        if trick_number == 8:
+            points += 10  # last-trick bonus
+
+        r['tricks'].append({
+            'number': trick_number,
+            'cards': trick_cards[:],
+            'winner_position': winner_pos,
+            'winner_team': winner_team,
+            'points': points,
+        })
+        r['trick_counts'][winner_team] += 1
+        r['current_trick'] = []
+
+        if trick_number == 8:
+            return self._finish_round()
+
+        r['current_turn'] = winner_pos
+        return self._public_state()
+
+    # ------------------------------------------------------------------
+    # Round / match scoring
+    # ------------------------------------------------------------------
+
+    def _finish_round(self) -> dict:
+        r = self.current_round
+
+        # ── Step 1: separate trick-card points from declaration points ──────
+        # WIN_THRESHOLD is checked against trick points ONLY.
+        team_trick_pts: dict[int, int] = {0: 0, 1: 0}
+        for trick in r['tricks']:
+            team_trick_pts[trick['winner_team']] += trick['points']
+
+        team_decl_pts: dict[int, int] = dict(r['team_declarations'])  # {0:…, 1:…}
+
+        bidding_team = r['bidding_team']
+        other_team   = 1 - bidding_team
+
+        # ── Step 2: cot detection ────────────────────────────────────────────
+        cot_team = None
+        if r['trick_counts'][bidding_team] == 8:
+            cot_team = bidding_team
+        elif r['trick_counts'][other_team] == 8:
+            cot_team = other_team
+
+        card_total = sum(team_trick_pts.values())   # 162 in hokm, 130 in sans_atout
+
+        # ── Step 3: determine awarded points ────────────────────────────────
+        threshold = (WIN_THRESHOLD_SANS_ATOUT
+                     if r['mode'] == 'sans_atout'
+                     else WIN_THRESHOLD_HOKM)
+
+        if cot_team is not None:
+            # Cot: only card-trick points are doubled; declarations are added once
+            # for the winning team only — losing team gets 0 (declarations forfeited).
+            if cot_team == bidding_team:
+                awarded = {
+                    bidding_team: card_total * 2 + team_decl_pts[bidding_team],
+                    other_team:   0,
+                }
+            else:
+                awarded = {
+                    bidding_team: 0,
+                    other_team:   card_total * 2 + team_decl_pts[other_team],
+                }
+        elif team_trick_pts[bidding_team] >= threshold:
+            # Normal win: each team keeps its own trick points + its own declarations.
+            awarded = {
+                bidding_team: team_trick_pts[bidding_team] + team_decl_pts[bidding_team],
+                other_team:   team_trick_pts[other_team]   + team_decl_pts[other_team],
+            }
+        else:
+            # Bidding team fails: gets 0 (declarations forfeited).
+            # Other team gets all card-trick points + only their own declarations.
+            awarded = {
+                bidding_team: 0,
+                other_team:   card_total + team_decl_pts[other_team],
+            }
+
+        for team, pts in awarded.items():
+            self.team_scores[team] += pts
+
+        r['status']         = 'finished'
+        r['team_trick_pts'] = team_trick_pts
+        r['team_decl_pts']  = team_decl_pts
+        r['awarded']        = awarded
+        r['cot_team']       = cot_team
+
+        winner = next(
+            (team for team, score in self.team_scores.items() if score >= MATCH_WIN_SCORE),
+            None
+        )
+
+        if winner is not None:
+            self.state = 'game_end'
+        else:
+            self.dealer_position = (self.dealer_position + 1) % 4
+            self.state = 'round_end'
+
+        return {
+            'state': self._public_state(),
+            'round_result': self._serializable_round_result(r),
+            'game_winner': winner,
+        }
+
+    def _serializable_round_result(self, r: dict) -> dict:
+        """Return the round result with only JSON-serializable fields."""
+        return {
+            'dealer':          r['dealer'],
+            'mode':            r['mode'],
+            'trump_suit':      r['trump_suit'],
+            'bidding_team':    r['bidding_team'],
+            'trick_counts':    {str(k): v for k, v in r['trick_counts'].items()},
+            'team_trick_pts':  {str(k): v for k, v in r['team_trick_pts'].items()},
+            'team_decl_pts':   {str(k): v for k, v in r['team_decl_pts'].items()},
+            'team_scores':     {str(k): v for k, v in self.team_scores.items()},
+            'awarded':         {str(k): v for k, v in r['awarded'].items()},
+            'cot_team':        r.get('cot_team'),
+            'status':          r['status'],
+        }
+
+    # ------------------------------------------------------------------
+    # Public state (broadcast-safe — no private hand data)
+    # ------------------------------------------------------------------
+
+    def _public_state(self) -> dict:
+        r = self.current_round
+        base: dict = {
+            'room_id': self.room_id,
+            'state': self.state,
+            'team_scores': self.team_scores,
+        }
+        if not r:
+            return base
+        base.update({
+            'dealer': r['dealer'],
+            'mode': r['mode'],
+            'trump_suit': r['trump_suit'],
+            'bidding_player': r.get('bidding_player'),
+            'bidding_team': r.get('bidding_team'),
+            'turned_card': r.get('turned_card'),
+            'current_turn': r.get('current_turn'),
+            'current_trick': r.get('current_trick', []),
+            'tricks_played': len(r['tricks']),
+            'trick_counts': r.get('trick_counts'),
+            'status': r['status'],
+            'hand_sizes': {pos: len(h) for pos, h in r['hands'].items()},
+        })
+        return base
+
+    def get_hand(self, position: int) -> list:
+        if self.current_round:
+            return self.current_round['hands'].get(position, [])
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Global in-memory session store:  room_id (int) → BiltGame
+# ---------------------------------------------------------------------------
+game_sessions: dict[int, BiltGame] = {}
+
+
+def get_session(room_id: int) -> Optional['BiltGame']:
+    return game_sessions.get(room_id)
+
+
+def create_session(room_id: int, players: list) -> BiltGame:
+    session = BiltGame(room_id, players)
+    game_sessions[room_id] = session
+    return session
+
+
+def remove_session(room_id: int) -> None:
+    game_sessions.pop(room_id, None)
