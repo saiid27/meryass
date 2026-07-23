@@ -99,10 +99,13 @@ class _GameScreenState extends State<GameScreen> {
                 _buildTurnBanner(size),
               if (state.status == 'bidding')
                 _buildBiddingPanel(size, game, auth, state),
-              if (state.status == 'bidding' &&
-                  game.isMyBidTurn &&
-                  _canShowCoins(game, state))
-                _buildCoinsButton(size, game, auth),
+              if (state.status == 'bidding')
+                _buildCoinsButton(
+                  size,
+                  game,
+                  auth,
+                  enabled: game.isMyBidTurn && _canShowCoins(game, state),
+                ),
               if (game.roundResult != null && game.gameWinner == null)
                 _buildRoundResultOverlay(game),
             ],
@@ -860,7 +863,12 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildCoinsButton(Size size, GameProvider game, AuthProvider auth) {
+  Widget _buildCoinsButton(
+    Size size,
+    GameProvider game,
+    AuthProvider auth, {
+    required bool enabled,
+  }) {
     final isLandscape = size.width > size.height;
     const width = 94.0;
     final top = isLandscape ? size.height * 0.61 : null;
@@ -874,15 +882,22 @@ class _GameScreenState extends State<GameScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => game.bid(auth.token!, widget.roomCode, 'coins'),
+          onTap: enabled
+              ? () => game.bid(auth.token!, widget.roomCode, 'coins')
+              : null,
           borderRadius: BorderRadius.circular(14),
           child: Container(
             height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFB3261E),
+              color: enabled
+                  ? const Color(0xFFB3261E)
+                  : Colors.black.withValues(alpha: 0.38),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.gold, width: 1.5),
+              border: Border.all(
+                color: enabled ? AppTheme.gold : Colors.white30,
+                width: 1.5,
+              ),
               boxShadow: const [
                 BoxShadow(color: Colors.black45, blurRadius: 8),
               ],
@@ -894,8 +909,8 @@ class _GameScreenState extends State<GameScreen> {
                   context.tr('coins'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: enabled ? Colors.white : Colors.white54,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
@@ -904,8 +919,8 @@ class _GameScreenState extends State<GameScreen> {
                   context.tr('guaranteed'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.gold,
+                  style: TextStyle(
+                    color: enabled ? AppTheme.gold : Colors.white38,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                   ),
