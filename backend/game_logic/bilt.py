@@ -21,7 +21,7 @@ Rules implemented
   scale, sans rounds on a 26-point scale.
   Bidding team needs ≥82 raw hokm points or ≥66 raw sans points to win the
   round; failure → other team gets the round score.
-  Cot (8/8 tricks) doubles total points. Match won at 152 game-points.
+  Cot (8/8 tricks) doubles total points. Match won at 100 game-points.
 """
 
 import time
@@ -34,7 +34,7 @@ from .deck import (
 
 WIN_THRESHOLD_HOKM      = 82   # out of 162 card-trick points
 WIN_THRESHOLD_SANS_ATOUT = 66   # out of 130 card-trick points (no trump J/9 bonus)
-MATCH_WIN_SCORE = 152
+MATCH_WIN_SCORE = 100
 
 
 class BiltGame:

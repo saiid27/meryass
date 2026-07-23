@@ -23,7 +23,7 @@ class AppConstants {
 
   static String avatarUrl(String filename) => '$apiUrl/users/avatars/$filename';
 
-  static const int matchWinScore = 152;
+  static const int matchWinScore = 100;
 }
 
 class Suit {

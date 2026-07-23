@@ -3,7 +3,7 @@ import pytest
 from game_logic.deck import (
     create_deck, deal_cards, deal_remaining,
     card_value, resolve_trick, detect_declarations,
-    SUITS, RANKS,
+    SUITS, RANKS, TRUMP_ORDER, NON_TRUMP_ORDER,
 )
 
 
@@ -78,6 +78,41 @@ class TestDealRemaining:
 
 
 class TestCardValue:
+    def test_to_trump_card_values(self):
+        trump = 'hearts'
+        expected = {
+            'J': 20,
+            '9': 14,
+            'A': 11,
+            '10': 10,
+            'K': 4,
+            'Q': 3,
+            '8': 0,
+            '7': 0,
+        }
+        for rank, points in expected.items():
+            assert card_value({'suit': trump, 'rank': rank}, trump, 'hokm') == points
+
+    def test_to_trump_strength_order(self):
+        assert TRUMP_ORDER == ['7', '8', 'Q', 'K', '10', 'A', '9', 'J']
+
+    def test_sans_card_values(self):
+        expected = {
+            'A': 11,
+            '10': 10,
+            'K': 4,
+            'Q': 3,
+            'J': 2,
+            '9': 0,
+            '8': 0,
+            '7': 0,
+        }
+        for rank, points in expected.items():
+            assert card_value({'suit': 'hearts', 'rank': rank}, None, 'sans_atout') == points
+
+    def test_sans_strength_order(self):
+        assert NON_TRUMP_ORDER == ['7', '8', '9', 'J', 'Q', 'K', '10', 'A']
+
     def test_trump_jack_is_20(self):
         assert card_value({'suit': 'hearts', 'rank': 'J'}, 'hearts', 'hokm') == 20
 

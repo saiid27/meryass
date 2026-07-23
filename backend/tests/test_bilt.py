@@ -262,8 +262,11 @@ class TestScoring:
         team1_decls=0,
         team0_tricks=4,
         team1_tricks=4,
+        initial_scores=None,
     ) -> tuple[BiltGame, dict]:
         g = _new_game()
+        if initial_scores is not None:
+            g.team_scores = dict(initial_scores)
         g.current_round = {
             'dealer': 0,
             'hands': {0: [], 1: [], 2: [], 3: []},
@@ -322,6 +325,25 @@ class TestScoring:
         assert result['round_result']['awarded'] == {'0': 0, '1': 26}
         assert g.team_scores == {0: 0, 1: 26}
         assert result['game_winner'] is None
+
+    def test_match_is_won_at_100_points(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=66,
+            team1_raw=64,
+            initial_scores={0: 86, 1: 0},
+        )
+        assert g.team_scores[0] == 99
+        assert result['game_winner'] is None
+
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=66,
+            team1_raw=64,
+            initial_scores={0: 99, 1: 0},
+        )
+        assert g.team_scores[0] == 112
+        assert result['game_winner'] == 0
 
     def _simulate_full_game(self) -> tuple[BiltGame, dict]:
         """Run a complete match (one round, then check winner)."""
