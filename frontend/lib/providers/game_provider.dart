@@ -22,7 +22,11 @@ class GameProvider extends ChangeNotifier {
   bool get gameStarted => _gameStarted;
 
   bool get isMyTurn => _gameState?.currentTurn == _myPosition;
-  bool get isMyBidTurn => _gameState?.biddingPlayer == _myPosition;
+  bool get isMyBidTurn =>
+      _gameState?.status == 'bidding' &&
+      _myPosition != null &&
+      _gameState?.biddingPlayer == _myPosition &&
+      !(_gameState?.bidChoices.containsKey(_myPosition) ?? false);
 
   void setupSocketListeners(String token, String roomCode) {
     // Guard: never attach twice
@@ -35,7 +39,7 @@ class GameProvider extends ChangeNotifier {
         _gameState = GameStateModel.fromJson(state as Map<String, dynamic>);
         _roundResult = null;
         _gameWinner = null;
-        _gameStarted = true;   // triggers navigation in RoomScreen
+        _gameStarted = true; // triggers navigation in RoomScreen
         notifyListeners();
       }
     });
@@ -60,7 +64,7 @@ class GameProvider extends ChangeNotifier {
     SocketService.on('game:round_result', (dynamic data) {
       final d = data as Map<String, dynamic>;
       _roundResult = d['result'] as Map<String, dynamic>?;
-      _gameWinner  = d['game_winner'] as int?;
+      _gameWinner = d['game_winner'] as int?;
       notifyListeners();
     });
 

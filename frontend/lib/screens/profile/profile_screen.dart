@@ -33,7 +33,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 80);
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (image == null || !mounted) return;
 
     try {
@@ -42,8 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await context.read<AuthProvider>().refreshProfile();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -57,8 +60,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _editingUsername = false);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -70,8 +74,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final avatarUrl =
-        user.avatar != null ? AppConstants.avatarUrl(user.avatar!) : null;
+    final avatarUrl = user.avatar != null
+        ? AppConstants.avatarUrl(user.avatar!)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -85,8 +90,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!mounted) return;
               navigator.popUntil((r) => r.isFirst);
             },
-            child: Text(context.tr('logout'),
-                style: const TextStyle(color: AppTheme.red)),
+            child: Text(
+              context.tr('logout'),
+              style: const TextStyle(color: AppTheme.red),
+            ),
           ),
         ],
       ),
@@ -98,9 +105,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
             _buildUsernameSection(user.username),
             const SizedBox(height: 8),
-            Text(user.email ?? '',
-                style:
-                    const TextStyle(color: Colors.white38, fontSize: 14)),
+            Text(
+              user.email ?? '',
+              style: const TextStyle(color: Colors.white38, fontSize: 14),
+            ),
             const SizedBox(height: 32),
             _buildStatsGrid(user),
           ],
@@ -115,15 +123,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         CircleAvatar(
           radius: 56,
           backgroundColor: AppTheme.primary,
-          backgroundImage:
-              avatarUrl != null ? NetworkImage(avatarUrl) : null,
+          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
           child: avatarUrl == null
               ? Text(
                   username.substring(0, 1).toUpperCase(),
                   style: const TextStyle(
-                      fontSize: 40,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
+                    fontSize: 40,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 )
               : null,
         ),
@@ -140,8 +148,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppTheme.surface, width: 2),
               ),
-              child: const Icon(Icons.camera_alt,
-                  size: 18, color: Colors.white),
+              child: const Icon(
+                Icons.camera_alt,
+                size: 18,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -158,7 +169,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               controller: _usernameCtrl,
               autofocus: true,
               decoration: InputDecoration(
-                  labelText: context.tr('username_label')),
+                labelText: context.tr('username_label'),
+              ),
             ),
           ),
           IconButton(
@@ -175,11 +187,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(username,
-            style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white)),
+        Text(
+          username,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         const SizedBox(width: 8),
         GestureDetector(
           onTap: () => setState(() => _editingUsername = true),
@@ -199,14 +214,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
       children: [
-        _statCard(context.tr('wins'), '${user.wins}',
-            Icons.emoji_events, AppTheme.gold),
-        _statCard(context.tr('losses'), '${user.losses}',
-            Icons.sentiment_dissatisfied, AppTheme.red),
-        _statCard(context.tr('games'), '${user.gamesPlayed}',
-            Icons.style, AppTheme.primaryLight),
-        _statCard(context.tr('win_rate'), '$winRate%',
-            Icons.bar_chart, Colors.purple),
+        _statCard(
+          context.tr('wins'),
+          '${user.wins}',
+          Icons.emoji_events,
+          AppTheme.gold,
+        ),
+        _statCard(
+          context.tr('losses'),
+          '${user.losses}',
+          Icons.sentiment_dissatisfied,
+          AppTheme.red,
+        ),
+        _statCard(
+          context.tr('games'),
+          '${user.gamesPlayed}',
+          Icons.style,
+          AppTheme.primaryLight,
+        ),
+        _statCard(
+          context.tr('win_rate'),
+          '$winRate%',
+          Icons.bar_chart,
+          Colors.purple,
+        ),
       ],
     );
   }
@@ -223,15 +254,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 6),
-          Text(value,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold)),
-          Text(label,
-              style:
-                  const TextStyle(color: Colors.white38, fontSize: 11),
-              textAlign: TextAlign.center),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white38, fontSize: 11),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );

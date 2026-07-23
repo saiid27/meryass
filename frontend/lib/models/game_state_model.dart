@@ -8,6 +8,7 @@ class GameStateModel {
   final String? mode;
   final String? trumpSuit;
   final int? biddingPlayer;
+  final Map<int, String> bidChoices;
   final int? biddingTeam;
   final CardModel? turnedCard;
   final int? currentTurn;
@@ -24,6 +25,7 @@ class GameStateModel {
     this.mode,
     this.trumpSuit,
     this.biddingPlayer,
+    this.bidChoices = const {},
     this.biddingTeam,
     this.turnedCard,
     this.currentTurn,
@@ -52,6 +54,12 @@ class GameStateModel {
         trickList.add(TrickCard.fromJson(t as Map<String, dynamic>));
       }
     }
+    final choices = <int, String>{};
+    if (json['bid_choices'] is Map) {
+      (json['bid_choices'] as Map).forEach((k, v) {
+        choices[int.parse(k.toString())] = v.toString();
+      });
+    }
     return GameStateModel(
       roomId: json['room_id']?.toString() ?? '',
       state: json['state'] ?? '',
@@ -60,6 +68,7 @@ class GameStateModel {
       mode: json['mode'],
       trumpSuit: json['trump_suit'],
       biddingPlayer: json['bidding_player'],
+      bidChoices: choices,
       biddingTeam: json['bidding_team'],
       turnedCard: json['turned_card'] != null
           ? CardModel.fromJson(json['turned_card'] as Map<String, dynamic>)

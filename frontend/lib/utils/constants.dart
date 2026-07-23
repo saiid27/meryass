@@ -27,18 +27,23 @@ class AppConstants {
 }
 
 class Suit {
-  static const String hearts   = 'hearts';
+  static const String hearts = 'hearts';
   static const String diamonds = 'diamonds';
-  static const String clubs    = 'clubs';
-  static const String spades   = 'spades';
+  static const String clubs = 'clubs';
+  static const String spades = 'spades';
 
   static String symbol(String suit) {
     switch (suit) {
-      case hearts:   return '♥';
-      case diamonds: return '♦';
-      case clubs:    return '♣';
-      case spades:   return '♠';
-      default:       return suit;
+      case hearts:
+        return '♥';
+      case diamonds:
+        return '♦';
+      case clubs:
+        return '♣';
+      case spades:
+        return '♠';
+      default:
+        return suit;
     }
   }
 

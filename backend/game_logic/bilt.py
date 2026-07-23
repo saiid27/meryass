@@ -7,8 +7,9 @@ Rules implemented
 - 32-card deck (7–A × 4 suits), 8 cards per player.
 - Phase-1 deal: 3 then 2 cards each (counter-clockwise). remaining[0] shown as
   turned card (preview only — stays in remaining so phase-2 gets exactly 12).
-- Bidding: players bid clockwise from dealer+1. Actions: pass / take <suit> /
-  sans_atout. Four consecutive passes → redeal.
+- Bidding: all four players choose pass / to / sans.
+  `take <suit>` and `sans_atout` are accepted as legacy aliases.
+  Four passes → redeal.
 - Phase-2 deal: 3 more cards each after bid accepted (total 8 per player).
 - Playing: trick-taking, 8 tricks per round.
   - Must follow lead suit if able.
@@ -21,6 +22,7 @@ Rules implemented
   Cot (8/8 tricks) doubles total points. Match won at 152 game-points.
 """
 
+import time
 from typing import Optional
 from .deck import (
     VALID_SUITS, VALID_RANKS, VALID_ACTIONS,
@@ -43,6 +45,8 @@ class BiltGame:
         self.dealer_position = 0
         self.current_round: Optional[dict] = None
         self.team_scores: dict[int, int] = {0: 0, 1: 0}
+        self.last_bid_choices: dict[int, str] = {}
+        self.bid_choices_visible_until = 0
         self.state = 'idle'
 
     # ------------------------------------------------------------------
@@ -64,7 +68,8 @@ class BiltGame:
             'mode': None,                    # 'hokm' | 'sans_atout'
             'trump_suit': None,
             'bidding_player': (self.dealer_position + 1) % 4,
-            'bid_passes': 0,
+            'bid_choices': {},
+            'accepted_bid': None,
             'bidding_team': None,
             'bidding_user_id': None,
             'tricks': [],
@@ -89,19 +94,40 @@ class BiltGame:
             return {'error': err}
 
         r = self.current_round
+        action = self._normalize_bid_action(action)
 
-        if action == 'pass':
-            r['bid_passes'] += 1
-            if r['bid_passes'] >= 4:
-                return self.start_round()   # redeal
-            r['bidding_player'] = (position + 1) % 4
+        r['bid_choices'][position] = {
+            'action': action,
+            'suit': suit,
+        }
+        if action != 'pass' and r['accepted_bid'] is None:
+            r['accepted_bid'] = {
+                'position': position,
+                'action': action,
+                'suit': suit,
+            }
+
+        if len(r['bid_choices']) < 4:
+            r['bidding_player'] = self._next_bidding_player(position)
             return self._public_state()
 
+        self._remember_bid_choices(r['bid_choices'])
+        accepted = r['accepted_bid']
+        if accepted is None:
+            r['status'] = 'redeal_pending'
+            r['bidding_player'] = None
+            self.state = 'redeal_pending'
+            return self._public_state()
+
+        position = accepted['position']
+        action = accepted['action']
+        suit = accepted.get('suit')
+
         # Bid accepted
-        if action == 'take':
+        if action == 'to':
             r['mode'] = 'hokm'
-            r['trump_suit'] = suit
-        else:  # sans_atout
+            r['trump_suit'] = suit or r['turned_card']['suit']
+        else:  # sans
             r['mode'] = 'sans_atout'
             r['trump_suit'] = None
 
@@ -126,12 +152,45 @@ class BiltGame:
         r = self.current_round
         if not r or r['status'] != 'bidding':
             return 'Not in bidding phase'
-        if r['bidding_player'] != position:
+        if position != r['bidding_player']:
             return 'Not your turn to bid'
+        if position in r['bid_choices']:
+            return 'Bid already submitted'
         if action not in VALID_ACTIONS:
             return f'Invalid action: {action}'
-        if action == 'take' and suit not in VALID_SUITS:
+        normalized_action = self._normalize_bid_action(action)
+        if r.get('accepted_bid') is not None and normalized_action != 'pass':
+            return 'Only pass is available after a bid'
+        if action == 'take' and suit is None:
+            return 'Invalid suit: None'
+        if normalized_action == 'to' and suit is not None and suit not in VALID_SUITS:
             return f'Invalid suit: {suit}'
+        return None
+
+    def _remember_bid_choices(self, choices: dict) -> None:
+        self.last_bid_choices = {
+            position: choice['action'] for position, choice in choices.items()
+        }
+        self.bid_choices_visible_until = time.time() + 60
+
+    def _normalize_bid_action(self, action: str) -> str:
+        if action in {'take', 'to'}:
+            return 'to'
+        if action in {'sans_atout', 'sans'}:
+            return 'sans'
+        return action
+
+    def _next_bidding_player(self, position: int) -> Optional[int]:
+        r = self.current_round
+        for offset in range(1, 5):
+            candidate = (position + offset) % 4
+            if candidate not in r['bid_choices']:
+                return candidate
+        return None
+
+    def complete_pending_redeal(self) -> Optional[dict]:
+        if self.current_round and self.current_round['status'] == 'redeal_pending':
+            return self.start_round()
         return None
 
     # ------------------------------------------------------------------
@@ -374,6 +433,7 @@ class BiltGame:
             'mode': r['mode'],
             'trump_suit': r['trump_suit'],
             'bidding_player': r.get('bidding_player'),
+            'bid_choices': self._visible_bid_choices(r),
             'bidding_team': r.get('bidding_team'),
             'turned_card': r.get('turned_card'),
             'current_turn': r.get('current_turn'),
@@ -384,6 +444,15 @@ class BiltGame:
             'hand_sizes': {pos: len(h) for pos, h in r['hands'].items()},
         })
         return base
+
+    def _visible_bid_choices(self, r: dict) -> dict[int, str]:
+        if r.get('status') == 'bidding':
+            return {
+                pos: choice['action'] for pos, choice in r.get('bid_choices', {}).items()
+            }
+        if time.time() <= self.bid_choices_visible_until:
+            return self.last_bid_choices
+        return {}
 
     def get_hand(self, position: int) -> list:
         if self.current_round:

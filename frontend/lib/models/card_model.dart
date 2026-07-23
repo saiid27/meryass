@@ -14,11 +14,16 @@ class CardModel {
 
   String get suitSymbol {
     switch (suit) {
-      case 'hearts': return '♥';
-      case 'diamonds': return '♦';
-      case 'clubs': return '♣';
-      case 'spades': return '♠';
-      default: return suit;
+      case 'hearts':
+        return '♥';
+      case 'diamonds':
+        return '♦';
+      case 'clubs':
+        return '♣';
+      case 'spades':
+        return '♠';
+      default:
+        return suit;
     }
   }
 

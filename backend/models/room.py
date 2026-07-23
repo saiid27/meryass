@@ -16,6 +16,7 @@ class Room(db.Model):
     code       = db.Column(db.String(10), unique=True, nullable=False, default=generate_room_code)
     name       = db.Column(db.String(100), nullable=False)
     game_type  = db.Column(db.String(20), default='bilt')
+    scoring_mode = db.Column(db.String(20), default='zero')
     status     = db.Column(db.String(20), default='waiting')  # waiting|playing|finished
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     is_private = db.Column(db.Boolean, default=False)
@@ -40,6 +41,7 @@ class Room(db.Model):
             'code': self.code,
             'name': self.name,
             'game_type': self.game_type,
+            'scoring_mode': self.scoring_mode,
             'status': self.status,
             'creator': self.creator.to_dict() if self.creator else None,
             'player_count': self.player_count,

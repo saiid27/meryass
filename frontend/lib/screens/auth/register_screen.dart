@@ -35,10 +35,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _error = null);
     try {
       await context.read<AuthProvider>().register(
-            _usernameCtrl.text.trim(),
-            _emailCtrl.text.trim().toLowerCase(),
-            _passwordCtrl.text,
-          );
+        _usernameCtrl.text.trim(),
+        _emailCtrl.text.trim().toLowerCase(),
+        _passwordCtrl.text,
+      );
     } catch (e) {
       setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     }
@@ -100,9 +100,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                          _obscure ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => _obscure = !_obscure),
+                        _obscure ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
                   validator: (v) {
@@ -136,9 +136,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: AppTheme.red.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(_error!,
-                        style: const TextStyle(color: AppTheme.red),
-                        textAlign: TextAlign.center),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: AppTheme.red),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -149,13 +151,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : Text(context.tr('create_my_account')),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen())),
+                  onPressed: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
                   child: Text(
                     context.tr('already_account'),
                     style: const TextStyle(color: AppTheme.primaryLight),

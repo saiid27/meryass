@@ -28,6 +28,10 @@ def _bid_accepted(game: BiltGame = None, action='take', suit='hearts') -> BiltGa
     bidder = r['bidding_player']
     result = g.place_bid(bidder, action, suit)
     assert 'error' not in result, result
+    while g.current_round['status'] == 'bidding':
+        pos = g.current_round['bidding_player']
+        result = g.place_bid(pos, 'pass')
+        assert 'error' not in result, result
     return g
 
 
@@ -61,16 +65,27 @@ class TestBidding:
             pos = (first_bidder + i) % 4
             result = g.place_bid(pos, 'pass')
             assert 'error' not in result
-        # After 4 passes a new round starts — hands reset to 5
+        # After 4 passes choices remain visible before the delayed redeal.
+        assert g.current_round['status'] == 'redeal_pending'
+        assert g._public_state()['bid_choices'] == {
+            first_bidder: 'pass',
+            (first_bidder + 1) % 4: 'pass',
+            (first_bidder + 2) % 4: 'pass',
+            (first_bidder + 3) % 4: 'pass',
+        }
+        g.complete_pending_redeal()
         r2 = g.current_round
+        assert r2['status'] == 'bidding'
         for pos in range(4):
             assert len(r2['hands'][pos]) == 5
 
-    def test_wrong_turn_returns_error(self):
+    def test_player_cannot_bid_twice(self):
         g = _started_round()
         r = g.current_round
-        wrong = (r['bidding_player'] + 1) % 4
-        result = g.place_bid(wrong, 'pass')
+        bidder = r['bidding_player']
+        result = g.place_bid(bidder, 'pass')
+        assert 'error' not in result
+        result = g.place_bid(bidder, 'to')
         assert 'error' in result
 
     def test_invalid_action_returns_error(self):
@@ -88,6 +103,34 @@ class TestBidding:
     def test_take_moves_to_playing(self):
         g = _bid_accepted()
         assert g.current_round['status'] == 'playing'
+
+    def test_to_uses_turned_card_suit(self):
+        g = _started_round()
+        r = g.current_round
+        turned_suit = r['turned_card']['suit']
+        result = g.place_bid(r['bidding_player'], 'to')
+        assert 'error' not in result
+        while g.current_round['status'] == 'bidding':
+            result = g.place_bid(g.current_round['bidding_player'], 'pass')
+            assert 'error' not in result
+        assert g.current_round['status'] == 'playing'
+        assert g.current_round['mode'] == 'hokm'
+        assert g.current_round['trump_suit'] == turned_suit
+
+    def test_only_pass_after_to(self):
+        g = _started_round()
+        r = g.current_round
+        result = g.place_bid(r['bidding_player'], 'to')
+        assert 'error' not in result
+        result = g.place_bid(g.current_round['bidding_player'], 'sans')
+        assert result.get('error') == 'Only pass is available after a bid'
+
+    def test_bid_choices_remain_visible_after_bid(self):
+        g = _bid_accepted(action='to', suit=None)
+        public_state = g._public_state()
+        assert public_state['status'] == 'playing'
+        bid_position = g.current_round['accepted_bid']['position']
+        assert public_state['bid_choices'][bid_position] == 'to'
 
     def test_eight_cards_each_after_bid(self):
         g = _bid_accepted()
@@ -108,6 +151,9 @@ class TestBidding:
         r = g.current_round
         result = g.place_bid(r['bidding_player'], 'sans_atout')
         assert 'error' not in result
+        while g.current_round['status'] == 'bidding':
+            result = g.place_bid(g.current_round['bidding_player'], 'pass')
+            assert 'error' not in result
         assert g.current_round['trump_suit'] is None
         assert g.current_round['mode'] == 'sans_atout'
 

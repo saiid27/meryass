@@ -3,31 +3,59 @@
 const Map<String, Map<String, String>> appStrings = {
   // ── Auth ────────────────────────────────────────────────────────────────
   'app_title': {'fr': 'Meryas', 'ar': 'مرياس'},
-  'app_subtitle': {'fr': 'Jeu de cartes en ligne', 'ar': 'لعبة ورق عبر الإنترنت'},
-  'username_or_email': {'fr': 'Nom d\'utilisateur ou email', 'ar': 'اسم المستخدم أو البريد الإلكتروني'},
+  'app_subtitle': {
+    'fr': 'Jeu de cartes en ligne',
+    'ar': 'لعبة ورق عبر الإنترنت',
+  },
+  'username_or_email': {
+    'fr': 'Nom d\'utilisateur ou email',
+    'ar': 'اسم المستخدم أو البريد الإلكتروني',
+  },
   'password': {'fr': 'Mot de passe', 'ar': 'كلمة المرور'},
   'login': {'fr': 'Connexion', 'ar': 'تسجيل الدخول'},
-  'no_account': {'fr': 'Pas encore de compte ? S\'inscrire', 'ar': 'ليس لديك حساب؟ سجّل الآن'},
-  'invalid_credentials': {'fr': 'Identifiant ou mot de passe incorrect', 'ar': 'اسم المستخدم أو كلمة المرور غير صحيحة'},
+  'no_account': {
+    'fr': 'Pas encore de compte ? S\'inscrire',
+    'ar': 'ليس لديك حساب؟ سجّل الآن',
+  },
+  'invalid_credentials': {
+    'fr': 'Identifiant ou mot de passe incorrect',
+    'ar': 'اسم المستخدم أو كلمة المرور غير صحيحة',
+  },
 
   'create_account': {'fr': 'Créer un compte', 'ar': 'إنشاء حساب'},
   'username': {'fr': 'Nom d\'utilisateur', 'ar': 'اسم المستخدم'},
   'email': {'fr': 'Email', 'ar': 'البريد الإلكتروني'},
-  'confirm_password': {'fr': 'Confirmer le mot de passe', 'ar': 'تأكيد كلمة المرور'},
+  'confirm_password': {
+    'fr': 'Confirmer le mot de passe',
+    'ar': 'تأكيد كلمة المرور',
+  },
   'create_my_account': {'fr': 'Créer mon compte', 'ar': 'إنشاء حسابي'},
-  'already_account': {'fr': 'Déjà un compte ? Se connecter', 'ar': 'لديك حساب بالفعل؟ سجّل دخولك'},
+  'already_account': {
+    'fr': 'Déjà un compte ? Se connecter',
+    'ar': 'لديك حساب بالفعل؟ سجّل دخولك',
+  },
 
   // ── Validation ─────────────────────────────────────────────────────────
   'field_required': {'fr': 'Champ requis', 'ar': 'هذا الحقل مطلوب'},
   'min_3_chars': {'fr': 'Minimum 3 caractères', 'ar': '3 أحرف على الأقل'},
   'min_6_chars': {'fr': 'Minimum 6 caractères', 'ar': '6 أحرف على الأقل'},
   'invalid_email': {'fr': 'Email invalide', 'ar': 'بريد إلكتروني غير صالح'},
-  'passwords_differ': {'fr': 'Mots de passe différents', 'ar': 'كلمتا المرور غير متطابقتين'},
+  'passwords_differ': {
+    'fr': 'Mots de passe différents',
+    'ar': 'كلمتا المرور غير متطابقتين',
+  },
 
   // ── Lobby ───────────────────────────────────────────────────────────────
   'create_room': {'fr': 'Créer une salle', 'ar': 'إنشاء غرفة'},
   'room_name': {'fr': 'Nom de la salle', 'ar': 'اسم الغرفة'},
   'private_room': {'fr': 'Salle privée', 'ar': 'غرفة خاصة'},
+  'game_type': {'fr': 'Jeu', 'ar': 'نوع اللعبة'},
+  'bilt': {'fr': 'Bilt', 'ar': 'بيلت'},
+  'torneeka': {'fr': 'Torneeka', 'ar': 'تورنيكة'},
+  'coming_soon': {'fr': 'Bientôt', 'ar': 'قريبا'},
+  'scoring_mode': {'fr': 'Score', 'ar': 'حساب النقاط'},
+  'score_from_zero': {'fr': 'Départ à 0', 'ar': 'ابتداء من صفر'},
+  'score_from_26': {'fr': 'Départ à 26', 'ar': 'ابتداء من 26'},
   'join_by_code': {'fr': 'Code', 'ar': 'كود'},
   'join_by_code_title': {'fr': 'Rejoindre par code', 'ar': 'الانضمام برمز'},
   'room_code_hint': {'fr': 'ex: AB1234', 'ar': 'مثال: AB1234'},
@@ -36,6 +64,8 @@ const Map<String, Map<String, String>> appStrings = {
   'play': {'fr': 'Jouer', 'ar': 'العب'},
   'watch': {'fr': 'Voir', 'ar': 'مشاهدة'},
   'cancel': {'fr': 'Annuler', 'ar': 'إلغاء'},
+  'back': {'fr': 'Retour', 'ar': 'رجوع'},
+  'next': {'fr': 'Suivant', 'ar': 'التالي'},
   'create': {'fr': 'Créer', 'ar': 'إنشاء'},
   'join': {'fr': 'Rejoindre', 'ar': 'انضمام'},
   'status_waiting': {'fr': 'Attente', 'ar': 'انتظار'},
@@ -52,9 +82,19 @@ const Map<String, Map<String, String>> appStrings = {
   'team': {'fr': 'Équipe', 'ar': 'الفريق'},
   'ready_btn': {'fr': 'Je suis prêt', 'ar': 'أنا جاهز'},
   'ready_label': {'fr': 'Prêt !', 'ar': 'جاهز!'},
-  'waiting_players': {'fr': 'En attente de joueurs...', 'ar': 'بانتظار اللاعبين...'},
-  'waiting_ready': {'fr': 'En attente que tous soient prêts...', 'ar': 'بانتظار أن يكون الجميع جاهزاً...'},
+  'waiting_players': {
+    'fr': 'En attente de joueurs...',
+    'ar': 'بانتظار اللاعبين...',
+  },
+  'waiting_ready': {
+    'fr': 'En attente que tous soient prêts...',
+    'ar': 'بانتظار أن يكون الجميع جاهزاً...',
+  },
   'spectators_label': {'fr': 'Spectateurs', 'ar': 'المشاهدون'},
+  'supervisor': {'fr': 'Superviseur', 'ar': 'المشرف'},
+  'move_to_spectators': {'fr': 'Mettre spectateur', 'ar': 'استبدال اللاعب'},
+  'seat_player': {'fr': 'Placer', 'ar': 'إدخال'},
+  'choose_seat': {'fr': 'Choisir une place', 'ar': 'اختر المقعد'},
 
   // ── Profile ─────────────────────────────────────────────────────────────
   'profile': {'fr': 'Profil', 'ar': 'الملف الشخصي'},
@@ -69,11 +109,19 @@ const Map<String, Map<String, String>> appStrings = {
   'trump_label': {'fr': 'Atout', 'ar': 'الكوز'},
   'trick_empty': {'fr': 'Pli vide', 'ar': 'الطاولة فارغة'},
   'your_turn': {'fr': 'Votre tour !', 'ar': 'دورك!'},
-  'tap_again_to_play': {'fr': 'Appuyer à nouveau pour jouer', 'ar': 'اضغط مجدداً للعب'},
+  'tap_again_to_play': {
+    'fr': 'Appuyer à nouveau pour jouer',
+    'ar': 'اضغط مجدداً للعب',
+  },
   'bidding_wait': {'fr': 'Enchères en cours...', 'ar': 'المزاد جارٍ...'},
-  'your_bid_turn': {'fr': 'C\'est votre tour d\'enchérir', 'ar': 'دورك للمزايدة'},
+  'your_bid_turn': {
+    'fr': 'C\'est votre tour d\'enchérir',
+    'ar': 'دورك للمزايدة',
+  },
   'turned_card': {'fr': 'Carte retournée', 'ar': 'الورقة المكشوفة'},
-  'pass': {'fr': 'Passer', 'ar': 'تمرير'},
+  'pass': {'fr': 'passe', 'ar': 'passe'},
+  'to': {'fr': 'to', 'ar': 'to'},
+  'sans': {'fr': 'sans', 'ar': 'sans'},
   'no_trump': {'fr': 'Sans-atout', 'ar': 'بلا كوز'},
   'choose_trump': {'fr': 'Choisir l\'atout :', 'ar': 'اختر الكوز:'},
   'team1': {'fr': 'Équipe 1', 'ar': 'الفريق 1'},

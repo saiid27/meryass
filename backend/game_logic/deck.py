@@ -4,7 +4,7 @@ SUITS = ['hearts', 'diamonds', 'clubs', 'spades']
 RANKS = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 VALID_SUITS = set(SUITS)
 VALID_RANKS = set(RANKS)
-VALID_ACTIONS = {'pass', 'take', 'sans_atout'}
+VALID_ACTIONS = {'pass', 'take', 'to', 'sans_atout', 'sans'}
 
 NON_TRUMP_POINTS = {'7': 0, '8': 0, '9': 0, '10': 10, 'J': 2, 'Q': 3, 'K': 4, 'A': 11}
 TRUMP_POINTS     = {'7': 0, '8': 0, '9': 14, '10': 10, 'J': 20, 'Q': 3, 'K': 4, 'A': 11}

@@ -21,7 +21,6 @@ class PlayingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = card.isRed ? const Color(0xFFE53935) : Colors.white;
     return GestureDetector(
       onTap: isPlayable ? onTap : null,
       child: AnimatedContainer(
@@ -36,8 +35,8 @@ class PlayingCard extends StatelessWidget {
             color: isSelected
                 ? const Color(0xFF4CAF50)
                 : isPlayable
-                    ? Colors.yellow.withValues(alpha: 0.7)
-                    : Colors.grey.shade300,
+                ? Colors.yellow.withValues(alpha: 0.7)
+                : Colors.grey.shade300,
             width: isSelected ? 3 : 1.5,
           ),
           boxShadow: [
@@ -50,50 +49,82 @@ class PlayingCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 4,
-              left: 6,
-              child: Column(
-                children: [
-                  Text(card.rank,
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold)),
-                  Text(card.suitSymbol,
-                      style: TextStyle(color: color, fontSize: 11)),
-                ],
-              ),
-            ),
-            Center(
-              child: Text(
-                card.suitSymbol,
-                style: TextStyle(color: color, fontSize: 28),
-              ),
-            ),
-            Positioned(
-              bottom: 4,
-              right: 6,
-              child: RotatedBox(
-                quarterTurns: 2,
-                child: Column(
-                  children: [
-                    Text(card.rank,
-                        style: TextStyle(
-                            color: color,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold)),
-                    Text(card.suitSymbol,
-                        style: TextStyle(color: color, fontSize: 11)),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        clipBehavior: Clip.antiAlias,
+        child: Image.asset(
+          _assetPath,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              _FallbackCardFace(card: card),
         ),
       ),
+    );
+  }
+
+  String get _cardKey => '${card.suit}_${card.rank.toLowerCase()}';
+
+  String get _assetPath => 'assets/cards_final/$_cardKey.jpg';
+}
+
+class _FallbackCardFace extends StatelessWidget {
+  final CardModel card;
+
+  const _FallbackCardFace({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = card.isRed ? const Color(0xFFE53935) : Colors.black87;
+    return Stack(
+      children: [
+        Positioned(
+          top: 4,
+          left: 6,
+          child: Column(
+            children: [
+              Text(
+                card.rank,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                card.suitSymbol,
+                style: TextStyle(color: color, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        Center(
+          child: Text(
+            card.suitSymbol,
+            style: TextStyle(color: color, fontSize: 28),
+          ),
+        ),
+        Positioned(
+          bottom: 4,
+          right: 6,
+          child: RotatedBox(
+            quarterTurns: 2,
+            child: Column(
+              children: [
+                Text(
+                  card.rank,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  card.suitSymbol,
+                  style: TextStyle(color: color, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -118,7 +149,7 @@ class CardBack extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white24),
         boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Center(

@@ -92,6 +92,9 @@ def _start_game(room: Room, room_code: str) -> None:
     members = RoomPlayer.query.filter_by(room_id=room.id, is_spectator=False).all()
     if len(members) != 4:
         return
+    if room.game_type != 'bilt' or room.scoring_mode != 'zero':
+        auth_error('This game option is not available yet')
+        return
 
     # Guard: no existing active game for this room
     existing_game = Game.query.filter_by(room_id=room.id, status='active').first()

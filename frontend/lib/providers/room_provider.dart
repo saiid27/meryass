@@ -40,11 +40,21 @@ class RoomProvider extends ChangeNotifier {
     }
   }
 
-  Future<RoomModel?> createRoom(String name, {String gameType = 'bilt', bool isPrivate = false}) async {
+  Future<RoomModel?> createRoom(
+    String name, {
+    String gameType = 'bilt',
+    String scoringMode = 'zero',
+    bool isPrivate = false,
+  }) async {
     _loading = true;
     notifyListeners();
     try {
-      final data = await ApiService.createRoom(name: name, gameType: gameType, isPrivate: isPrivate);
+      final data = await ApiService.createRoom(
+        name: name,
+        gameType: gameType,
+        scoringMode: scoringMode,
+        isPrivate: isPrivate,
+      );
       final room = RoomModel.fromJson(data['room'] as Map<String, dynamic>);
       _currentRoom = room;
       notifyListeners();
@@ -92,6 +102,25 @@ class RoomProvider extends ChangeNotifier {
         .map((p) => RoomPlayerModel.fromJson(p as Map<String, dynamic>))
         .toList();
     notifyListeners();
+  }
+
+  void updateRoomState(Map<String, dynamic> data) {
+    _currentRoom = RoomModel.fromJson(data['room'] as Map<String, dynamic>);
+    updatePlayersFromSocket(data['players'] as List);
+  }
+
+  Future<void> benchPlayer(String code, int memberId) async {
+    final data = await ApiService.benchRoomPlayer(code, memberId);
+    updateRoomState(data);
+  }
+
+  Future<void> assignSeat(String code, int position, int memberId) async {
+    final data = await ApiService.assignRoomSeat(
+      code: code,
+      position: position,
+      memberId: memberId,
+    );
+    updateRoomState(data);
   }
 
   void setupSocketListeners(String token, String roomCode) {

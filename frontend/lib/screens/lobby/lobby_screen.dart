@@ -35,55 +35,161 @@ class _LobbyScreenState extends State<LobbyScreen> {
   void _showCreateRoomDialog() {
     final nameCtrl = TextEditingController();
     bool isPrivate = false;
+    String gameType = 'bilt';
+    String scoringMode = 'zero';
+    int step = 0;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          backgroundColor: AppTheme.cardBackground,
-          title: Text(context.tr('create_room')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                    labelText: context.tr('room_name')),
+        builder: (ctx, setS) {
+          final canContinue = step != 0 || nameCtrl.text.trim().isNotEmpty;
+          final titles = [
+            context.tr('room_name'),
+            context.tr('game_type'),
+            context.tr('scoring_mode'),
+          ];
+
+          return AlertDialog(
+            backgroundColor: AppTheme.cardBackground,
+            title: Text(context.tr('create_room')),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _CreateRoomSteps(currentStep: step),
+                    const SizedBox(height: 20),
+                    Text(
+                      titles[step],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: switch (step) {
+                        0 => TextField(
+                          key: const ValueKey('room-name-step'),
+                          controller: nameCtrl,
+                          onChanged: (_) => setS(() {}),
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            labelText: context.tr('room_name'),
+                          ),
+                        ),
+                        1 => Column(
+                          key: const ValueKey('game-type-step'),
+                          children: [
+                            _CreateOptionTile(
+                              label: context.tr('bilt'),
+                              selected: gameType == 'bilt',
+                              icon: Icons.check,
+                              onTap: () => setS(() => gameType = 'bilt'),
+                            ),
+                            const SizedBox(height: 10),
+                            _CreateOptionTile(
+                              label: context.tr('torneeka'),
+                              trailing: context.tr('coming_soon'),
+                              selected: false,
+                              enabled: false,
+                              icon: Icons.lock_outline,
+                            ),
+                          ],
+                        ),
+                        _ => Column(
+                          key: const ValueKey('scoring-step'),
+                          children: [
+                            _CreateOptionTile(
+                              label: context.tr('score_from_zero'),
+                              selected: scoringMode == 'zero',
+                              icon: Icons.check,
+                              onTap: () => setS(() => scoringMode = 'zero'),
+                            ),
+                            const SizedBox(height: 10),
+                            _CreateOptionTile(
+                              label: context.tr('score_from_26'),
+                              trailing: context.tr('coming_soon'),
+                              selected: false,
+                              enabled: false,
+                              icon: Icons.lock_outline,
+                            ),
+                            const SizedBox(height: 16),
+                            CheckboxListTile(
+                              value: isPrivate,
+                              onChanged: (v) =>
+                                  setS(() => isPrivate = v ?? false),
+                              activeColor: AppTheme.primaryLight,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(context.tr('private_room')),
+                              controlAffinity: ListTileControlAffinity.leading,
+                            ),
+                          ],
+                        ),
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Checkbox(
-                    value: isPrivate,
-                    onChanged: (v) => setS(() => isPrivate = v ?? false),
-                    activeColor: AppTheme.primaryLight,
-                  ),
-                  Text(context.tr('private_room')),
-                ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  if (step == 0) {
+                    Navigator.pop(ctx);
+                  } else {
+                    setS(() => step -= 1);
+                  }
+                },
+                child: Text(
+                  step == 0 ? context.tr('cancel') : context.tr('back'),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: !canContinue
+                    ? null
+                    : () async {
+                        if (step < 2) {
+                          setS(() => step += 1);
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        await _createRoom(
+                          nameCtrl.text.trim(),
+                          gameType: gameType,
+                          scoringMode: scoringMode,
+                          isPrivate: isPrivate,
+                        );
+                      },
+                child: Text(
+                  step < 2 ? context.tr('next') : context.tr('create'),
+                ),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(context.tr('cancel'))),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await _createRoom(nameCtrl.text.trim(), isPrivate: isPrivate);
-              },
-              child: Text(context.tr('create')),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Future<void> _createRoom(String name, {bool isPrivate = false}) async {
+  Future<void> _createRoom(
+    String name, {
+    String gameType = 'bilt',
+    String scoringMode = 'zero',
+    bool isPrivate = false,
+  }) async {
     if (name.isEmpty) return;
-    final room = await context
-        .read<RoomProvider>()
-        .createRoom(name, isPrivate: isPrivate);
+    final room = await context.read<RoomProvider>().createRoom(
+      name,
+      gameType: gameType,
+      scoringMode: scoringMode,
+      isPrivate: isPrivate,
+    );
     if (room != null && mounted) {
       _navigateToRoom(room);
     }
@@ -105,8 +211,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.tr('cancel'))),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('cancel')),
+          ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -121,8 +228,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   Future<void> _joinRoom(String code, {bool spectator = false}) async {
     if (code.isEmpty) return;
-    final success =
-        await context.read<RoomProvider>().joinRoom(code, spectator: spectator);
+    final success = await context.read<RoomProvider>().joinRoom(
+      code,
+      spectator: spectator,
+    );
     if (success && mounted) {
       final room = context.read<RoomProvider>().currentRoom;
       if (room != null) _navigateToRoom(room);
@@ -143,9 +252,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('app_title'),
-            style: const TextStyle(
-                color: AppTheme.gold, fontWeight: FontWeight.bold)),
+        title: Text(
+          context.tr('app_title'),
+          style: const TextStyle(
+            color: AppTheme.gold,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -158,11 +271,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
               child: Text(
                 auth.user?.username.substring(0, 1).toUpperCase() ?? 'M',
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen())),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -200,7 +317,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 side: const BorderSide(color: AppTheme.gold),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -220,8 +338,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
           children: [
             const Icon(Icons.style_outlined, size: 64, color: Colors.white24),
             const SizedBox(height: 16),
-            Text(context.tr('no_rooms'),
-                style: const TextStyle(color: Colors.white54)),
+            Text(
+              context.tr('no_rooms'),
+              style: const TextStyle(color: Colors.white54),
+            ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: prov.fetchRooms,
@@ -248,8 +368,11 @@ class _RoomCard extends StatelessWidget {
   final VoidCallback onJoin;
   final VoidCallback onSpectate;
 
-  const _RoomCard(
-      {required this.room, required this.onJoin, required this.onSpectate});
+  const _RoomCard({
+    required this.room,
+    required this.onJoin,
+    required this.onSpectate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -276,19 +399,29 @@ class _RoomCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(room.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(
+                    room.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text('${room.playerCount}/4',
-                          style: const TextStyle(color: Colors.white54)),
+                      Text(
+                        '${room.playerCount}/4',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
                       const SizedBox(width: 8),
                       if (room.spectatorCount > 0)
-                        Text('${room.spectatorCount} 👁',
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 12)),
+                        Text(
+                          '${room.spectatorCount} 👁',
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
+                          ),
+                        ),
                       const Spacer(),
                       _StatusBadge(status: room.status),
                     ],
@@ -301,16 +434,126 @@ class _RoomCard extends StatelessWidget {
               ElevatedButton(
                 onPressed: onJoin,
                 style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
                 child: Text(context.tr('play')),
               )
             else
               TextButton(
                 onPressed: onSpectate,
-                child: Text(context.tr('watch'),
-                    style: const TextStyle(color: AppTheme.gold)),
+                child: Text(
+                  context.tr('watch'),
+                  style: const TextStyle(color: AppTheme.gold),
+                ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateRoomSteps extends StatelessWidget {
+  final int currentStep;
+
+  const _CreateRoomSteps({required this.currentStep});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < 3; i++) ...[
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: i == currentStep ? 28 : 9,
+            height: 9,
+            decoration: BoxDecoration(
+              color: i <= currentStep ? AppTheme.gold : Colors.white24,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          if (i < 2) const SizedBox(width: 7),
+        ],
+      ],
+    );
+  }
+}
+
+class _CreateOptionTile extends StatelessWidget {
+  final String label;
+  final String? trailing;
+  final bool selected;
+  final bool enabled;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _CreateOptionTile({
+    required this.label,
+    this.trailing,
+    required this.selected,
+    this.enabled = true,
+    required this.icon,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = !enabled
+        ? Colors.white38
+        : selected
+        ? const Color(0xFF132015)
+        : Colors.white;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 54),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.gold : Colors.white10,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppTheme.gold : Colors.white24,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: foreground, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foreground,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  trailing!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

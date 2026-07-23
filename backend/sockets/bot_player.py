@@ -75,16 +75,31 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                     return
 
                 current_round = session.current_round
-                if current_round['status'] == 'bidding':
-                    position = current_round['bidding_player']
-                    if not _bot_at(room_id, position):
-                        return
-
-                    turned_card = current_round['turned_card']
-                    result = session.place_bid(position, 'take', turned_card['suit'])
-                    socketio.emit('game:state_update', {'state': result}, to=room_code)
-                    if result.get('status') == 'playing':
+                if current_round['status'] == 'redeal_pending':
+                    socketio.sleep(60)
+                    new_state = session.complete_pending_redeal()
+                    if new_state:
+                        socketio.emit('game:new_round', {'state': new_state}, to=room_code)
                         _broadcast_human_hands(session)
+
+                elif current_round['status'] == 'bidding':
+                    acted = False
+                    for position in range(4):
+                        if position in current_round.get('bid_choices', {}):
+                            continue
+                        if not _bot_at(room_id, position):
+                            continue
+
+                        result = session.place_bid(position, 'pass')
+                        socketio.emit('game:state_update', {'state': result}, to=room_code)
+                        acted = True
+
+                        if result.get('status') == 'playing':
+                            _broadcast_human_hands(session)
+                            break
+
+                    if not acted:
+                        return
 
                 elif current_round['status'] == 'playing':
                     position = current_round['current_turn']

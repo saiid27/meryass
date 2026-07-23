@@ -5,6 +5,7 @@ class RoomModel {
   final String code;
   final String name;
   final String gameType;
+  final String scoringMode;
   final String status;
   final UserModel? creator;
   final int playerCount;
@@ -16,6 +17,7 @@ class RoomModel {
     required this.code,
     required this.name,
     required this.gameType,
+    this.scoringMode = 'zero',
     required this.status,
     this.creator,
     this.playerCount = 0,
@@ -29,8 +31,11 @@ class RoomModel {
       code: json['code'],
       name: json['name'],
       gameType: json['game_type'] ?? 'bilt',
+      scoringMode: json['scoring_mode'] ?? 'zero',
       status: json['status'] ?? 'waiting',
-      creator: json['creator'] != null ? UserModel.fromJson(json['creator']) : null,
+      creator: json['creator'] != null
+          ? UserModel.fromJson(json['creator'])
+          : null,
       playerCount: json['player_count'] ?? 0,
       spectatorCount: json['spectator_count'] ?? 0,
       isPrivate: json['is_private'] ?? false,

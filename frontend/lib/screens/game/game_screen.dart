@@ -206,6 +206,7 @@ class _GameScreenState extends State<GameScreen> {
     final initial = displayName.trim().isEmpty
         ? '?'
         : displayName.trim().characters.first.toUpperCase();
+    final bidChoice = state.bidChoices[position];
 
     return Stack(
       clipBehavior: Clip.none,
@@ -255,6 +256,12 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
         ),
+        if (bidChoice != null)
+          Positioned(
+            top: isMe ? 0 : 4,
+            right: 0,
+            child: _BidChoiceBadge(choice: bidChoice),
+          ),
         Positioned(
           bottom: 0,
           left: 2,
@@ -684,6 +691,9 @@ class _GameScreenState extends State<GameScreen> {
   ) {
     final isMyBidTurn = game.isMyBidTurn;
     final panelWidth = math.min(390.0, size.width * 0.48);
+    final hasAcceptedBid = state.bidChoices.values.any(
+      (choice) => choice == 'to' || choice == 'sans',
+    );
 
     return Positioned(
       width: panelWidth,
@@ -722,7 +732,7 @@ class _GameScreenState extends State<GameScreen> {
                   if (isMyBidTurn) ...[
                     const SizedBox(height: 8),
                     Wrap(
-                      spacing: 6,
+                      spacing: 8,
                       runSpacing: 5,
                       alignment: WrapAlignment.center,
                       children: [
@@ -731,25 +741,19 @@ class _GameScreenState extends State<GameScreen> {
                           Colors.white70,
                           () => game.bid(auth.token!, widget.roomCode, 'pass'),
                         ),
-                        _compactBidButton(
-                          context.tr('no_trump'),
-                          const Color(0xFFD6A7FF),
-                          () => game.bid(
-                            auth.token!,
-                            widget.roomCode,
-                            'sans_atout',
+                        if (!hasAcceptedBid) ...[
+                          _compactBidButton(
+                            context.tr('sans'),
+                            const Color(0xFFD6A7FF),
+                            () =>
+                                game.bid(auth.token!, widget.roomCode, 'sans'),
                           ),
-                        ),
-                        _suitBidButton('hearts', '♥', AppTheme.red, auth, game),
-                        _suitBidButton(
-                          'diamonds',
-                          '♦',
-                          AppTheme.red,
-                          auth,
-                          game,
-                        ),
-                        _suitBidButton('clubs', '♣', Colors.white, auth, game),
-                        _suitBidButton('spades', '♠', Colors.white, auth, game),
+                          _compactBidButton(
+                            context.tr('to'),
+                            AppTheme.gold,
+                            () => game.bid(auth.token!, widget.roomCode, 'to'),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -766,36 +770,12 @@ class _GameScreenState extends State<GameScreen> {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(62, 31),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        minimumSize: const Size(72, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         side: BorderSide(color: color.withValues(alpha: 0.55)),
         visualDensity: VisualDensity.compact,
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 11)),
-    );
-  }
-
-  Widget _suitBidButton(
-    String suit,
-    String symbol,
-    Color color,
-    AuthProvider auth,
-    GameProvider game,
-  ) {
-    return InkWell(
-      onTap: () => game.bid(auth.token!, widget.roomCode, 'take', suit: suit),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: 34,
-        height: 31,
-        decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        alignment: Alignment.center,
-        child: Text(symbol, style: TextStyle(color: color, fontSize: 20)),
-      ),
     );
   }
 
@@ -906,6 +886,44 @@ class _GameScreenState extends State<GameScreen> {
             child: Text(context.tr('return_lobby')),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BidChoiceBadge extends StatelessWidget {
+  final String choice;
+
+  const _BidChoiceBadge({required this.choice});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = choice == 'pass' ? 'passe' : choice;
+    final color = switch (choice) {
+      'to' => AppTheme.gold,
+      'sans' => const Color(0xFFD6A7FF),
+      _ => Colors.white70,
+    };
+    return Container(
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xEE10271C),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color, width: 1.3),
+        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 5)],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
       ),
     );
   }

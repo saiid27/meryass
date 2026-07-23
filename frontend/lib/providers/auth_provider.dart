@@ -34,7 +34,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final data = await ApiService.register(
-          username: username, email: email, password: password);
+        username: username,
+        email: email,
+        password: password,
+      );
       await _handleAuthResponse(data);
     } finally {
       _loading = false;
@@ -46,7 +49,10 @@ class AuthProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      final data = await ApiService.login(identifier: identifier, password: password);
+      final data = await ApiService.login(
+        identifier: identifier,
+        password: password,
+      );
       await _handleAuthResponse(data);
     } finally {
       _loading = false;

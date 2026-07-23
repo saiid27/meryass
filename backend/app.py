@@ -1,5 +1,6 @@
 import os
 from flask import Flask, jsonify
+from sqlalchemy import inspect, text
 from config import Config
 from extensions import db, bcrypt, jwt, socketio, cors
 
@@ -58,8 +59,21 @@ def create_app(config_class=Config):
 
     with app.app_context():
         db.create_all()
+        _ensure_room_schema()
 
     return app
+
+
+def _ensure_room_schema():
+    inspector = inspect(db.engine)
+    if not inspector.has_table('rooms'):
+        return
+    columns = {column['name'] for column in inspector.get_columns('rooms')}
+    if 'scoring_mode' not in columns:
+        db.session.execute(
+            text("ALTER TABLE rooms ADD COLUMN scoring_mode VARCHAR(20) DEFAULT 'zero'")
+        )
+        db.session.commit()
 
 
 if __name__ == '__main__':

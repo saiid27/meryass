@@ -36,16 +36,23 @@ class SocketService {
       socket.emit('room:ready', {'token': token, 'room_code': roomCode});
 
   // Game events
-  static void bid(String token, String roomCode, String action, {String? suit}) {
-    socket.emit('game:bid', {
-      'token': token,
-      'room_code': roomCode,
-      'action': action,
-      'suit': ?suit,
-    });
+  static void bid(
+    String token,
+    String roomCode,
+    String action, {
+    String? suit,
+  }) {
+    final payload = {'token': token, 'room_code': roomCode, 'action': action};
+    if (suit != null) payload['suit'] = suit;
+    socket.emit('game:bid', payload);
   }
 
-  static void playCard(String token, String roomCode, String suit, String rank) {
+  static void playCard(
+    String token,
+    String roomCode,
+    String suit,
+    String rank,
+  ) {
     socket.emit('game:play_card', {
       'token': token,
       'room_code': roomCode,

@@ -20,6 +20,7 @@ class RoomScreen extends StatefulWidget {
 
 class _RoomScreenState extends State<RoomScreen> {
   bool _navigating = false;
+  GameProvider? _gameProv;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _RoomScreenState extends State<RoomScreen> {
     final auth = context.read<AuthProvider>();
     final roomProv = context.read<RoomProvider>();
     final gameProv = context.read<GameProvider>();
+    _gameProv = gameProv;
     final token = auth.token!;
 
     roomProv.setupSocketListeners(token, widget.roomCode);
@@ -41,7 +43,8 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   void _onGameStarted() {
-    final gameProv = context.read<GameProvider>();
+    final gameProv = _gameProv;
+    if (gameProv == null) return;
     if (gameProv.gameStarted && !_navigating && mounted) {
       _navigating = true;
       gameProv.removeListener(_onGameStarted);
@@ -66,7 +69,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
   @override
   void dispose() {
-    context.read<GameProvider>().removeListener(_onGameStarted);
+    _gameProv?.removeListener(_onGameStarted);
     super.dispose();
   }
 
@@ -84,6 +87,7 @@ class _RoomScreenState extends State<RoomScreen> {
         .firstOrNull;
     final isSpectator = myMembership?.isSpectator ?? true;
     final isReady = myMembership?.isReady ?? false;
+    final isSupervisor = room?.creator?.id == myUserId;
 
     return PopScope(
       canPop: false,
@@ -120,8 +124,11 @@ class _RoomScreenState extends State<RoomScreen> {
           children: [
             if (room != null) _buildCodeBadge(room),
             const SizedBox(height: 16),
-            Expanded(child: _buildPlayerGrid(players, myUserId)),
-            if (spectators.isNotEmpty) _buildSpectatorsList(spectators),
+            Expanded(
+              child: _buildPlayerGrid(players, myUserId, isSupervisor, room),
+            ),
+            if (spectators.isNotEmpty)
+              _buildSpectatorsList(spectators, isSupervisor, room),
             const SizedBox(height: 16),
             if (!isSpectator) _buildBottomActions(auth, isReady, players),
             const SizedBox(height: 16),
@@ -159,7 +166,12 @@ class _RoomScreenState extends State<RoomScreen> {
     );
   }
 
-  Widget _buildPlayerGrid(List<RoomPlayerModel> players, int? myUserId) {
+  Widget _buildPlayerGrid(
+    List<RoomPlayerModel> players,
+    int? myUserId,
+    bool isSupervisor,
+    RoomModel? room,
+  ) {
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -176,6 +188,7 @@ class _RoomScreenState extends State<RoomScreen> {
         );
         final isEmpty = player.id == -1;
         final isMe = player.user?.id == myUserId;
+        final isCreator = player.user?.id == room?.creator?.id;
         final team = i % 2 == 0 ? 0 : 1;
 
         return Container(
@@ -236,6 +249,31 @@ class _RoomScreenState extends State<RoomScreen> {
                           size: 16,
                         ),
                       ),
+                    if (isSupervisor &&
+                        !isMe &&
+                        !isCreator &&
+                        room?.status == 'waiting')
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        child: InkWell(
+                          onTap: () => _benchPlayer(player),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF3B2020),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.swap_horiz,
+                              size: 15,
+                              color: AppTheme.gold,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -249,10 +287,14 @@ class _RoomScreenState extends State<RoomScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${context.tr('team')} ${team + 1}',
+                  isCreator
+                      ? context.tr('supervisor')
+                      : '${context.tr('team')} ${team + 1}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: team == 0
+                    color: isCreator
+                        ? AppTheme.gold
+                        : team == 0
                         ? Colors.blue.shade300
                         : Colors.orange.shade300,
                   ),
@@ -265,7 +307,11 @@ class _RoomScreenState extends State<RoomScreen> {
     );
   }
 
-  Widget _buildSpectatorsList(List<RoomPlayerModel> spectators) {
+  Widget _buildSpectatorsList(
+    List<RoomPlayerModel> spectators,
+    bool isSupervisor,
+    RoomModel? room,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(12),
@@ -273,20 +319,92 @@ class _RoomScreenState extends State<RoomScreen> {
         color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.visibility, color: Colors.white38, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '${context.tr('spectators_label')} : '
-              '${spectators.map((s) => s.user?.username ?? '?').join(', ')}',
-              style: const TextStyle(color: Colors.white38, fontSize: 13),
-            ),
+          Row(
+            children: [
+              const Icon(Icons.visibility, color: Colors.white38, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${context.tr('spectators_label')} : '
+                  '${spectators.map((s) => s.user?.username ?? '?').join(', ')}',
+                  style: const TextStyle(color: Colors.white38, fontSize: 13),
+                ),
+              ),
+            ],
           ),
+          if (isSupervisor && room?.status == 'waiting') ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final spectator in spectators)
+                  OutlinedButton.icon(
+                    onPressed: () => _chooseSeatFor(spectator),
+                    icon: const Icon(Icons.person_add_alt_1, size: 16),
+                    label: Text(
+                      '${context.tr('seat_player')} ${spectator.user?.username ?? '?'}',
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _benchPlayer(RoomPlayerModel player) async {
+    try {
+      await context.read<RoomProvider>().benchPlayer(
+        widget.roomCode,
+        player.id,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _chooseSeatFor(RoomPlayerModel player) async {
+    final position = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppTheme.cardBackground,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(title: Text(context.tr('choose_seat'))),
+            for (var i = 0; i < 4; i++)
+              ListTile(
+                leading: const Icon(Icons.event_seat),
+                title: Text('${context.tr('position')} ${i + 1}'),
+                subtitle: Text('${context.tr('team')} ${(i % 2) + 1}'),
+                onTap: () => Navigator.pop(ctx, i),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (position == null) return;
+    if (!mounted) return;
+    try {
+      await context.read<RoomProvider>().assignSeat(
+        widget.roomCode,
+        position,
+        player.id,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 
   Widget _buildBottomActions(
