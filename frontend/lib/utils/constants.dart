@@ -4,9 +4,10 @@
 ///   flutter run --dart-define=API_HOST=http://192.168.1.10:5000
 ///
 /// Defaults:
-///   Android emulator → 10.0.2.2:5000
-///   iOS simulator / real device / web → localhost:5000
+///   Render production backend → https://meryass.onrender.com
 class AppConstants {
+  static const String renderHost = 'https://meryass.onrender.com';
+
   static const String _defaultHost = String.fromEnvironment(
     'API_HOST',
     defaultValue: '',
@@ -14,8 +15,7 @@ class AppConstants {
 
   static String get baseUrl {
     if (_defaultHost.isNotEmpty) return _defaultHost;
-    // Android emulator uses 10.0.2.2 to reach the host loopback
-    return 'http://localhost:5000';
+    return renderHost;
   }
 
   static String get apiUrl => '$baseUrl/api';
