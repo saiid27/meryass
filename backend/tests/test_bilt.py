@@ -251,6 +251,78 @@ class TestPlayCard:
 
 
 class TestScoring:
+    def _finish_fake_round(
+        self,
+        *,
+        mode='hokm',
+        bidding_team=0,
+        team0_raw=82,
+        team1_raw=80,
+        team0_decls=0,
+        team1_decls=0,
+        team0_tricks=4,
+        team1_tricks=4,
+    ) -> tuple[BiltGame, dict]:
+        g = _new_game()
+        g.current_round = {
+            'dealer': 0,
+            'hands': {0: [], 1: [], 2: [], 3: []},
+            'remaining': [],
+            'turned_card': {'suit': 'hearts', 'rank': 'A'},
+            'mode': mode,
+            'trump_suit': 'hearts' if mode == 'hokm' else None,
+            'bidding_player': None,
+            'bid_choices': {},
+            'accepted_bid': {'position': 0, 'action': 'to' if mode == 'hokm' else 'sans'},
+            'bidding_team': bidding_team,
+            'bidding_user_id': 1,
+            'tricks': [
+                {'winner_team': 0, 'points': team0_raw},
+                {'winner_team': 1, 'points': team1_raw},
+            ],
+            'current_trick': [],
+            'trick_counts': {0: team0_tricks, 1: team1_tricks},
+            'current_turn': None,
+            'declared_positions': set(),
+            'team_declarations': {0: team0_decls, 1: team1_decls},
+            'all_declarations': {},
+            'status': 'playing',
+        }
+        result = g._finish_round()
+        return g, result
+
+    def test_to_scores_use_16_point_scale(self):
+        g, result = self._finish_fake_round(mode='hokm', team0_raw=82, team1_raw=80)
+        assert result['round_result']['awarded'] == {'0': 8, '1': 8}
+        assert g.team_scores == {0: 8, 1: 8}
+        assert result['game_winner'] is None
+
+    def test_failed_to_gives_other_team_16_not_raw_162(self):
+        g, result = self._finish_fake_round(mode='hokm', team0_raw=81, team1_raw=81)
+        assert result['round_result']['awarded'] == {'0': 0, '1': 16}
+        assert g.team_scores == {0: 0, 1: 16}
+        assert result['game_winner'] is None
+
+    def test_sans_scores_use_26_point_scale(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=66,
+            team1_raw=64,
+        )
+        assert result['round_result']['awarded'] == {'0': 13, '1': 13}
+        assert g.team_scores == {0: 13, 1: 13}
+        assert result['game_winner'] is None
+
+    def test_failed_sans_gives_other_team_26_not_raw_130(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=65,
+            team1_raw=65,
+        )
+        assert result['round_result']['awarded'] == {'0': 0, '1': 26}
+        assert g.team_scores == {0: 0, 1: 26}
+        assert result['game_winner'] is None
+
     def _simulate_full_game(self) -> tuple[BiltGame, dict]:
         """Run a complete match (one round, then check winner)."""
         g = _new_game()
