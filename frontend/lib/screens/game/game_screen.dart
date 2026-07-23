@@ -757,6 +757,7 @@ class _GameScreenState extends State<GameScreen> {
     final isMyBidTurn = game.isMyBidTurn;
     final panelWidth = math.min(390.0, size.width * 0.48);
     final availableBids = _availableBidActions(state);
+    final canShowCoins = _canShowCoins(game, state);
 
     return Positioned(
       width: panelWidth,
@@ -804,6 +805,13 @@ class _GameScreenState extends State<GameScreen> {
                           Colors.white70,
                           () => game.bid(auth.token!, widget.roomCode, 'pass'),
                         ),
+                        if (canShowCoins)
+                          _compactBidButton(
+                            context.tr('coins'),
+                            const Color(0xFF4FC3F7),
+                            () =>
+                                game.bid(auth.token!, widget.roomCode, 'coins'),
+                          ),
                         if (availableBids.contains('to'))
                           _compactBidButton(
                             context.tr('to'),
@@ -870,6 +878,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   List<String> _availableBidActions(GameStateModel state) {
+    if (state.coins != null) return const [];
     const strength = {
       'treve': 1,
       'kerew': 2,
@@ -887,6 +896,22 @@ class _GameScreenState extends State<GameScreen> {
         .where((entry) => entry.value > currentStrength)
         .map((entry) => entry.key)
         .toList();
+  }
+
+  bool _canShowCoins(GameProvider game, GameStateModel state) {
+    const suitBids = {'pik', 'kere', 'kerew', 'treve'};
+    final accepted = state.acceptedBid;
+    if (accepted == null ||
+        state.coins != null ||
+        !suitBids.contains(accepted.action)) {
+      return false;
+    }
+    final myPosition = game.myPosition;
+    final players = context.read<RoomProvider>().gamePlayers;
+    final me = players
+        .where((player) => player.position == myPosition)
+        .firstOrNull;
+    return me?.team != null && me!.team != accepted.team;
   }
 
   Widget _buildRoundResultOverlay(GameProvider game) {

@@ -15,6 +15,7 @@ VALID_ACTIONS = {
     'kere',
     'kerew',
     'treve',
+    'coins',
 }
 
 NON_TRUMP_POINTS = {'7': 0, '8': 0, '9': 0, '10': 10, 'J': 2, 'Q': 3, 'K': 4, 'A': 11}

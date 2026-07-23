@@ -144,15 +144,39 @@ class TestBidding:
         assert 'error' not in result
         assert g.current_round['accepted_bid']['action'] == 'pik'
 
-    def test_suit_bid_sets_trump_suit(self):
+    def test_suit_bid_uses_sans_order_and_sets_suit(self):
         g = _started_round()
         result = g.place_bid(g.current_round['bidding_player'], 'treve')
         assert 'error' not in result
         while g.current_round['status'] == 'bidding':
             result = g.place_bid(g.current_round['bidding_player'], 'pass')
             assert 'error' not in result
-        assert g.current_round['mode'] == 'hokm'
+        assert g.current_round['mode'] == 'sans_atout'
         assert g.current_round['trump_suit'] == 'clubs'
+
+    def test_coins_only_against_suit_bid_and_blocks_more_bids(self):
+        g = _started_round()
+        bidder = g.current_round['bidding_player']
+        result = g.place_bid(bidder, 'kerew')
+        assert 'error' not in result
+
+        result = g.place_bid(g.current_round['bidding_player'], 'coins')
+        assert 'error' not in result
+        result = g.place_bid(g.current_round['bidding_player'], 'to')
+        assert result.get('error') == 'Only pass is available after coins'
+
+    def test_coins_cannot_be_called_by_bidding_team_partner(self):
+        g = _started_round()
+        bidder = g.current_round['bidding_player']
+        result = g.place_bid(bidder, 'kerew')
+        assert 'error' not in result
+
+        same_team = (bidder + 2) % 4
+        while g.current_round['bidding_player'] != same_team:
+            result = g.place_bid(g.current_round['bidding_player'], 'pass')
+            assert 'error' not in result
+        result = g.place_bid(same_team, 'coins')
+        assert result.get('error') == 'Coins must be called by the opposing team'
 
     def test_bid_choices_remain_visible_after_bid(self):
         g = _bid_accepted(action='to', suit=None)
@@ -396,6 +420,8 @@ class TestScoring:
         team0_tricks=4,
         team1_tricks=4,
         initial_scores=None,
+        accepted_action=None,
+        coins=None,
     ) -> tuple[BiltGame, dict]:
         g = _new_game()
         if initial_scores is not None:
@@ -409,7 +435,11 @@ class TestScoring:
             'trump_suit': 'hearts' if mode == 'hokm' else None,
             'bidding_player': None,
             'bid_choices': {},
-            'accepted_bid': {'position': 0, 'action': 'to' if mode == 'hokm' else 'sans'},
+            'accepted_bid': {
+                'position': 0,
+                'action': accepted_action or ('to' if mode == 'hokm' else 'sans'),
+            },
+            'coins': coins,
             'bidding_team': bidding_team,
             'bidding_user_id': 1,
             'tricks': [
@@ -448,6 +478,57 @@ class TestScoring:
         assert result['round_result']['awarded'] == {'0': 13, '1': 13}
         assert g.team_scores == {0: 13, 1: 13}
         assert result['game_winner'] is None
+
+    def test_suit_bid_scores_use_16_point_scale(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=66,
+            team1_raw=64,
+            accepted_action='kerew',
+        )
+        assert result['round_result']['awarded'] == {'0': 8, '1': 8}
+        assert g.team_scores == {0: 8, 1: 8}
+
+    def test_failed_suit_bid_gives_other_team_16(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=65,
+            team1_raw=65,
+            accepted_action='kerew',
+        )
+        assert result['round_result']['awarded'] == {'0': 0, '1': 16}
+        assert g.team_scores == {0: 0, 1: 16}
+
+    def test_coins_awards_32_to_bidder_or_challenger_and_8_each_on_tie(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=70,
+            team1_raw=60,
+            accepted_action='kerew',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 32, '1': 0}
+        assert g.team_scores == {0: 32, 1: 0}
+
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=60,
+            team1_raw=70,
+            accepted_action='kerew',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 0, '1': 32}
+        assert g.team_scores == {0: 0, 1: 32}
+
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=65,
+            team1_raw=65,
+            accepted_action='kerew',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 8, '1': 8}
+        assert g.team_scores == {0: 8, 1: 8}
 
     def test_declarations_are_tracked_but_not_added_to_base_score_yet(self):
         g, result = self._finish_fake_round(

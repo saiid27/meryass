@@ -49,6 +49,7 @@ BID_SUITS = {
     'kerew': 'diamonds',
     'treve': 'clubs',
 }
+SUIT_BIDS = set(BID_SUITS)
 
 
 class BiltGame:
@@ -86,6 +87,7 @@ class BiltGame:
             'bidding_player': (self.dealer_position + 1) % 4,
             'bid_choices': {},
             'accepted_bid': None,
+            'coins': None,
             'bidding_team': None,
             'bidding_user_id': None,
             'tricks': [],
@@ -117,7 +119,12 @@ class BiltGame:
             'action': action,
             'suit': suit,
         }
-        if action != 'pass' and self._is_higher_bid(action, r['accepted_bid']):
+        if action == 'coins':
+            r['coins'] = {
+                'position': position,
+                'team': self.players[position]['team'],
+            }
+        elif action != 'pass' and self._is_higher_bid(action, r['accepted_bid']):
             r['accepted_bid'] = {
                 'position': position,
                 'action': action,
@@ -147,7 +154,7 @@ class BiltGame:
             r['mode'] = 'sans_atout'
             r['trump_suit'] = None
         else:
-            r['mode'] = 'hokm'
+            r['mode'] = 'sans_atout'
             r['trump_suit'] = BID_SUITS[action]
 
         r['bidding_team'] = self.players[position]['team']
@@ -179,6 +186,15 @@ class BiltGame:
         if action not in VALID_ACTIONS:
             return f'Invalid action: {action}'
         normalized_action = self._normalize_bid_action(action)
+        if r.get('coins') is not None and normalized_action != 'pass':
+            return 'Only pass is available after coins'
+        if normalized_action == 'coins':
+            accepted = r.get('accepted_bid')
+            if accepted is None or accepted['action'] not in SUIT_BIDS:
+                return 'Coins is only available against a suit bid'
+            if self.players[position]['team'] == self.players[accepted['position']]['team']:
+                return 'Coins must be called by the opposing team'
+            return None
         if (
             normalized_action != 'pass'
             and not self._is_higher_bid(normalized_action, r.get('accepted_bid'))
@@ -201,6 +217,8 @@ class BiltGame:
             return 'to'
         if action in {'sans_atout', 'sans', 'san'}:
             return 'sans'
+        if action == 'coins':
+            return 'coins'
         return action
 
     def _is_higher_bid(self, action: str, accepted_bid: Optional[dict]) -> bool:
@@ -456,7 +474,15 @@ class BiltGame:
                      if r['mode'] == 'sans_atout'
                      else WIN_THRESHOLD_HOKM)
 
-        if cot_team is not None:
+        if r.get('coins') is not None:
+            coins_team = r['coins']['team']
+            if team_trick_pts[bidding_team] == team_trick_pts[coins_team]:
+                awarded = {bidding_team: 8, coins_team: 8}
+            elif team_trick_pts[bidding_team] > team_trick_pts[coins_team]:
+                awarded = {bidding_team: 32, coins_team: 0}
+            else:
+                awarded = {bidding_team: 0, coins_team: 32}
+        elif cot_team is not None:
             # Cot doubles the base round. Declarations are tracked separately
             # until their specific conditions are added.
             if cot_team == bidding_team:
@@ -471,7 +497,11 @@ class BiltGame:
                 }
         elif team_trick_pts[bidding_team] >= threshold:
             # Normal win: split the 26 base points according to raw trick points.
-            bidding_points = self._score_units(team_trick_pts[bidding_team], card_total)
+            bidding_points = self._score_units(
+                team_trick_pts[bidding_team],
+                card_total,
+                round_total,
+            )
             awarded = {
                 bidding_team: bidding_points,
                 other_team:   round_total - bidding_points,
@@ -524,16 +554,25 @@ class BiltGame:
             'awarded':         {str(k): v for k, v in r['awarded'].items()},
             'cot_team':        r.get('cot_team'),
             'mg_result':       r.get('mg_result'),
+            'coins':           r.get('coins'),
             'status':          r['status'],
         }
 
-    def _score_units(self, raw_points: int, raw_total: int) -> int:
-        """Convert raw card points to the 26-point round scale."""
+    def _score_units(self, raw_points: int, raw_total: int, round_total: int) -> int:
+        """Convert raw card points to the current round score scale."""
         if raw_total <= 0:
             return 0
-        return max(0, min(26, (raw_points * 52 + raw_total) // (2 * raw_total)))
+        return max(
+            0,
+            min(round_total, (raw_points * round_total * 2 + raw_total) // (2 * raw_total)),
+        )
 
     def _round_score_total(self, mode: str) -> int:
+        r = self.current_round
+        if r and r.get('coins') is not None:
+            return 32
+        if r and r.get('accepted_bid', {}).get('action') in SUIT_BIDS:
+            return 16
         return 26
 
     def _team_trick_points(self, r: dict) -> dict[int, int]:
@@ -562,6 +601,8 @@ class BiltGame:
             'bidding_player': r.get('bidding_player'),
             'bid_choices': self._visible_bid_choices(r),
             'bidding_team': r.get('bidding_team'),
+            'accepted_bid': self._public_accepted_bid(r),
+            'coins': r.get('coins'),
             'turned_card': r.get('turned_card'),
             'current_turn': r.get('current_turn'),
             'turn_available_at': r.get('turn_available_at'),
@@ -593,6 +634,17 @@ class BiltGame:
             'suit': target['suit'],
             'rank': target['rank'],
             'lead_suit': target['lead_suit'],
+        }
+
+    def _public_accepted_bid(self, r: dict) -> Optional[dict]:
+        accepted = r.get('accepted_bid')
+        if not accepted:
+            return None
+        return {
+            'position': accepted['position'],
+            'team': self.players[accepted['position']]['team'],
+            'action': accepted['action'],
+            'suit': accepted.get('suit'),
         }
 
     def get_hand(self, position: int) -> list:

@@ -10,6 +10,8 @@ class GameStateModel {
   final int? biddingPlayer;
   final Map<int, String> bidChoices;
   final int? biddingTeam;
+  final BidInfo? acceptedBid;
+  final CoinsInfo? coins;
   final CardModel? turnedCard;
   final int? currentTurn;
   final double? turnAvailableAt;
@@ -29,6 +31,8 @@ class GameStateModel {
     this.biddingPlayer,
     this.bidChoices = const {},
     this.biddingTeam,
+    this.acceptedBid,
+    this.coins,
     this.turnedCard,
     this.currentTurn,
     this.turnAvailableAt,
@@ -74,6 +78,12 @@ class GameStateModel {
       biddingPlayer: json['bidding_player'],
       bidChoices: choices,
       biddingTeam: json['bidding_team'],
+      acceptedBid: json['accepted_bid'] != null
+          ? BidInfo.fromJson(json['accepted_bid'] as Map<String, dynamic>)
+          : null,
+      coins: json['coins'] != null
+          ? CoinsInfo.fromJson(json['coins'] as Map<String, dynamic>)
+          : null,
       turnedCard: json['turned_card'] != null
           ? CardModel.fromJson(json['turned_card'] as Map<String, dynamic>)
           : null,
@@ -86,6 +96,43 @@ class GameStateModel {
       tricksPlayed: json['tricks_played'] ?? 0,
       trickCounts: trickCountsMap,
       status: json['status'] ?? 'bidding',
+    );
+  }
+}
+
+class BidInfo {
+  final int position;
+  final int team;
+  final String action;
+  final String? suit;
+
+  const BidInfo({
+    required this.position,
+    required this.team,
+    required this.action,
+    this.suit,
+  });
+
+  factory BidInfo.fromJson(Map<String, dynamic> json) {
+    return BidInfo(
+      position: json['position'] as int,
+      team: json['team'] as int,
+      action: json['action'].toString(),
+      suit: json['suit']?.toString(),
+    );
+  }
+}
+
+class CoinsInfo {
+  final int position;
+  final int team;
+
+  const CoinsInfo({required this.position, required this.team});
+
+  factory CoinsInfo.fromJson(Map<String, dynamic> json) {
+    return CoinsInfo(
+      position: json['position'] as int,
+      team: json['team'] as int,
     );
   }
 }
