@@ -83,23 +83,18 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         _broadcast_human_hands(session)
 
                 elif current_round['status'] == 'bidding':
-                    acted = False
-                    for position in range(4):
-                        if position in current_round.get('bid_choices', {}):
-                            continue
-                        if not _bot_at(room_id, position):
-                            continue
-
-                        result = session.place_bid(position, 'pass')
-                        socketio.emit('game:state_update', {'state': result}, to=room_code)
-                        acted = True
-
-                        if result.get('status') == 'playing':
-                            _broadcast_human_hands(session)
-                            break
-
-                    if not acted:
+                    position = current_round.get('bidding_player')
+                    if position is None or not _bot_at(room_id, position):
                         return
+
+                    result = session.place_bid(position, 'pass')
+                    if 'error' in result:
+                        return
+
+                    socketio.emit('game:state_update', {'state': result}, to=room_code)
+
+                    if result.get('status') == 'playing':
+                        _broadcast_human_hands(session)
 
                 elif current_round['status'] == 'playing':
                     position = current_round['current_turn']

@@ -782,8 +782,11 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildRoundResultOverlay(GameProvider game) {
     final result = game.roundResult!;
     final awarded = result['awarded'] as Map? ?? {};
+    final teamScores = result['team_scores'] as Map? ?? {};
     int pointsFor(int team) =>
         (awarded[team] ?? awarded[team.toString()] ?? 0) as int;
+    int totalFor(int team) =>
+        (teamScores[team] ?? teamScores[team.toString()] ?? 0) as int;
 
     return Positioned.fill(
       child: Container(
@@ -810,6 +813,11 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
               const SizedBox(height: 14),
+              Text(
+                context.tr('round_points'),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
               _resultRow(context.tr('team1'), pointsFor(0), Colors.blueAccent),
               const SizedBox(height: 8),
               _resultRow(
@@ -817,6 +825,17 @@ class _GameScreenState extends State<GameScreen> {
                 pointsFor(1),
                 Colors.orangeAccent,
               ),
+              const SizedBox(height: 14),
+              Divider(color: Colors.white.withValues(alpha: 0.16), height: 1),
+              const SizedBox(height: 12),
+              Text(
+                context.tr('total_points'),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              _resultRow(context.tr('team1'), totalFor(0), Colors.blueAccent),
+              const SizedBox(height: 8),
+              _resultRow(context.tr('team2'), totalFor(1), Colors.orangeAccent),
               if (result['cot_team'] != null) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -824,10 +843,24 @@ class _GameScreenState extends State<GameScreen> {
                   style: const TextStyle(color: AppTheme.gold),
                 ),
               ],
-              const SizedBox(height: 12),
-              Text(
-                context.tr('next_round'),
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: game.clearRoundResult,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    context.tr('continue'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),
