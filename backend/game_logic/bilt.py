@@ -12,13 +12,11 @@ Rules implemented
   Four passes → redeal.
 - Phase-2 deal: 3 more cards each after bid accepted (total 8 per player).
 - Playing: trick-taking, 8 tricks per round.
-  - Must follow lead suit if able.
-  - If unable, must play trump if able (hokm mode).
+  - Players may throw off-suit; MG can challenge a missed lead suit.
   - Trump J and 9 are the two strongest trump cards.
 - Declarations (announced once per player per round): Bella (K+Q of trump, 20pts),
   Suite-3 (20pts), Suite-4+ (50pts).
-- Scoring uses Baloot score units: hokm/to rounds are counted on a 16-point
-  scale, sans rounds on a 26-point scale.
+- Scoring uses 26 points for both to and sans rounds.
   Bidding team needs ≥82 raw hokm points or ≥66 raw sans points to win the
   round; failure → other team gets the round score.
   Cot (8/8 tricks) doubles total points. Match won at 100 game-points.
@@ -407,7 +405,7 @@ class BiltGame:
             cot_team = other_team
 
         card_total = sum(team_trick_pts.values())   # 162 in hokm, 130 in sans_atout
-        round_total = self._score_units(card_total, r['mode'])
+        round_total = self._round_score_total(r['mode'])
 
         # ── Step 3: determine awarded points ────────────────────────────────
         threshold = (WIN_THRESHOLD_SANS_ATOUT
@@ -415,45 +413,31 @@ class BiltGame:
                      else WIN_THRESHOLD_HOKM)
 
         if cot_team is not None:
-            # Cot: only card-trick points are doubled; declarations are added once
-            # for the winning team only — losing team gets 0 (declarations forfeited).
+            # Cot doubles the base round. Declarations are tracked separately
+            # until their specific conditions are added.
             if cot_team == bidding_team:
                 awarded = {
-                    bidding_team: (
-                        round_total * 2
-                        + self._score_units(team_decl_pts[bidding_team], r['mode'])
-                    ),
+                    bidding_team: round_total * 2,
                     other_team:   0,
                 }
             else:
                 awarded = {
                     bidding_team: 0,
-                    other_team:   (
-                        round_total * 2
-                        + self._score_units(team_decl_pts[other_team], r['mode'])
-                    ),
+                    other_team:   round_total * 2,
                 }
         elif team_trick_pts[bidding_team] >= threshold:
-            # Normal win: each team keeps its own score units + declarations.
+            # Normal win: split the 26 base points according to raw trick points.
+            bidding_points = self._score_units(team_trick_pts[bidding_team], card_total)
             awarded = {
-                bidding_team: self._score_units(
-                    team_trick_pts[bidding_team] + team_decl_pts[bidding_team],
-                    r['mode'],
-                ),
-                other_team:   self._score_units(
-                    team_trick_pts[other_team] + team_decl_pts[other_team],
-                    r['mode'],
-                ),
+                bidding_team: bidding_points,
+                other_team:   round_total - bidding_points,
             }
         else:
             # Bidding team fails: gets 0 (declarations forfeited).
-            # Other team gets the round score + only their own declarations.
+            # Other team gets the full base round score.
             awarded = {
                 bidding_team: 0,
-                other_team:   round_total + self._score_units(
-                    team_decl_pts[other_team],
-                    r['mode'],
-                ),
+                other_team:   round_total,
             }
 
         for team, pts in awarded.items():
@@ -499,13 +483,14 @@ class BiltGame:
             'status':          r['status'],
         }
 
-    def _score_units(self, raw_points: int, mode: str) -> int:
-        """Convert raw card/declaration points to the displayed Baloot score."""
-        divisor = 5 if mode == 'sans_atout' else 10
-        return (raw_points * 2 + divisor) // (2 * divisor)
+    def _score_units(self, raw_points: int, raw_total: int) -> int:
+        """Convert raw card points to the 26-point round scale."""
+        if raw_total <= 0:
+            return 0
+        return max(0, min(26, (raw_points * 52 + raw_total) // (2 * raw_total)))
 
     def _round_score_total(self, mode: str) -> int:
-        return 26 if mode == 'sans_atout' else 16
+        return 26
 
     def _team_trick_points(self, r: dict) -> dict[int, int]:
         team_trick_pts: dict[int, int] = {0: 0, 1: 0}

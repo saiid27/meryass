@@ -297,8 +297,8 @@ class TestMg:
 
         result = g.call_mg(0)
         assert result['round_result']['mg_result']['valid'] is True
-        assert result['round_result']['awarded'] == {'0': 16, '1': 0}
-        assert g.team_scores == {0: 16, 1: 0}
+        assert result['round_result']['awarded'] == {'0': 26, '1': 0}
+        assert g.team_scores == {0: 26, 1: 0}
 
     def test_mg_false_awards_target_team_round_points(self):
         g = self._mg_round([
@@ -309,8 +309,8 @@ class TestMg:
 
         result = g.call_mg(0)
         assert result['round_result']['mg_result']['valid'] is False
-        assert result['round_result']['awarded'] == {'1': 16, '0': 0}
-        assert g.team_scores == {0: 0, 1: 16}
+        assert result['round_result']['awarded'] == {'1': 26, '0': 0}
+        assert g.team_scores == {0: 0, 1: 26}
 
     def test_mg_target_stays_visible_after_fourth_card_resolves_trick(self):
         g = self._mg_round([
@@ -336,7 +336,7 @@ class TestMg:
 
         result = g.call_mg(0)
         assert result['round_result']['mg_result']['valid'] is True
-        assert result['round_result']['awarded'] == {'0': 16, '1': 0}
+        assert result['round_result']['awarded'] == {'0': 26, '1': 0}
 
 
 class TestScoring:
@@ -383,16 +383,16 @@ class TestScoring:
         result = g._finish_round()
         return g, result
 
-    def test_to_scores_use_16_point_scale(self):
+    def test_to_scores_use_26_point_scale(self):
         g, result = self._finish_fake_round(mode='hokm', team0_raw=82, team1_raw=80)
-        assert result['round_result']['awarded'] == {'0': 8, '1': 8}
-        assert g.team_scores == {0: 8, 1: 8}
+        assert result['round_result']['awarded'] == {'0': 13, '1': 13}
+        assert g.team_scores == {0: 13, 1: 13}
         assert result['game_winner'] is None
 
-    def test_failed_to_gives_other_team_16_not_raw_162(self):
+    def test_failed_to_gives_other_team_26_not_raw_162(self):
         g, result = self._finish_fake_round(mode='hokm', team0_raw=81, team1_raw=81)
-        assert result['round_result']['awarded'] == {'0': 0, '1': 16}
-        assert g.team_scores == {0: 0, 1: 16}
+        assert result['round_result']['awarded'] == {'0': 0, '1': 26}
+        assert g.team_scores == {0: 0, 1: 26}
         assert result['game_winner'] is None
 
     def test_sans_scores_use_26_point_scale(self):
@@ -404,6 +404,18 @@ class TestScoring:
         assert result['round_result']['awarded'] == {'0': 13, '1': 13}
         assert g.team_scores == {0: 13, 1: 13}
         assert result['game_winner'] is None
+
+    def test_declarations_are_tracked_but_not_added_to_base_score_yet(self):
+        g, result = self._finish_fake_round(
+            mode='hokm',
+            team0_raw=82,
+            team1_raw=80,
+            team0_decls=50,
+            team1_decls=20,
+        )
+        assert result['round_result']['team_decl_pts'] == {'0': 50, '1': 20}
+        assert result['round_result']['awarded'] == {'0': 13, '1': 13}
+        assert g.team_scores == {0: 13, 1: 13}
 
     def test_failed_sans_gives_other_team_26_not_raw_130(self):
         g, result = self._finish_fake_round(
