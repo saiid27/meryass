@@ -64,6 +64,9 @@ class SocketService {
   static void declare(String token, String roomCode) =>
       socket.emit('game:declare', {'token': token, 'room_code': roomCode});
 
+  static void mg(String token, String roomCode) =>
+      socket.emit('game:mg', {'token': token, 'room_code': roomCode});
+
   // Listener management
   static void on(String event, void Function(dynamic) handler) =>
       socket.on(event, handler);

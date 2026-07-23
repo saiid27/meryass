@@ -84,6 +84,8 @@ class _GameScreenState extends State<GameScreen> {
               _buildScoreBoard(size, state),
               _buildRoomBadge(),
               _buildExitButton(),
+              if (state.mgTarget != null && state.status == 'playing')
+                _buildMgButton(size, game, auth, state),
               _buildHand(size, game, auth, state),
               if (game.isMyTurn && state.status == 'playing')
                 _buildTurnBanner(size),
@@ -501,6 +503,54 @@ class _GameScreenState extends State<GameScreen> {
               color: AppTheme.gold,
               fontSize: 13,
               fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMgButton(
+    Size size,
+    GameProvider game,
+    AuthProvider auth,
+    GameStateModel state,
+  ) {
+    final target = state.mgTarget!;
+    final canCall = target.position != game.myPosition;
+
+    return Positioned(
+      top: math.max(14.0, size.height * 0.08),
+      left: size.width * 0.46,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: canCall ? () => game.mg(auth.token!, widget.roomCode) : null,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 72,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: canCall
+                  ? const Color(0xFFB3261E)
+                  : Colors.black.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: canCall ? AppTheme.gold : Colors.white24,
+                width: 1.4,
+              ),
+              boxShadow: const [
+                BoxShadow(color: Colors.black45, blurRadius: 8),
+              ],
+            ),
+            child: const Text(
+              'MG',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ),

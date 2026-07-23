@@ -250,6 +250,95 @@ class TestPlayCard:
         assert sum(r['trick_counts'].values()) == 8
 
 
+class TestMg:
+    def _mg_round(self, target_hand) -> BiltGame:
+        g = _new_game()
+        g.current_round = {
+            'dealer': 0,
+            'hands': {
+                0: [{'suit': 'hearts', 'rank': 'A'}],
+                1: target_hand,
+                2: [],
+                3: [],
+            },
+            'remaining': [],
+            'turned_card': {'suit': 'clubs', 'rank': '7'},
+            'mode': 'hokm',
+            'trump_suit': 'clubs',
+            'bidding_player': None,
+            'bid_choices': {},
+            'accepted_bid': {'position': 0, 'action': 'to'},
+            'bidding_team': 0,
+            'bidding_user_id': 1,
+            'tricks': [],
+            'current_trick': [{'position': 0, 'suit': 'hearts', 'rank': 'A'}],
+            'mg_target': None,
+            'trick_counts': {0: 0, 1: 0},
+            'current_turn': 1,
+            'declared_positions': set(),
+            'team_declarations': {0: 0, 1: 0},
+            'all_declarations': {},
+            'status': 'playing',
+        }
+        g.state = 'playing'
+        return g
+
+    def test_mg_true_awards_challenger_team_round_points(self):
+        g = self._mg_round([
+            {'suit': 'hearts', 'rank': '7'},
+            {'suit': 'spades', 'rank': 'A'},
+        ])
+        result = g.play_card(1, 'spades', 'A')
+        assert 'error' not in result
+
+        public_target = result['mg_target']
+        assert public_target['position'] == 1
+        assert 'valid' not in public_target
+
+        result = g.call_mg(0)
+        assert result['round_result']['mg_result']['valid'] is True
+        assert result['round_result']['awarded'] == {'0': 16, '1': 0}
+        assert g.team_scores == {0: 16, 1: 0}
+
+    def test_mg_false_awards_target_team_round_points(self):
+        g = self._mg_round([
+            {'suit': 'spades', 'rank': 'A'},
+        ])
+        result = g.play_card(1, 'spades', 'A')
+        assert 'error' not in result
+
+        result = g.call_mg(0)
+        assert result['round_result']['mg_result']['valid'] is False
+        assert result['round_result']['awarded'] == {'1': 16, '0': 0}
+        assert g.team_scores == {0: 0, 1: 16}
+
+    def test_mg_target_stays_visible_after_fourth_card_resolves_trick(self):
+        g = self._mg_round([
+            {'suit': 'hearts', 'rank': '7'},
+            {'suit': 'spades', 'rank': 'A'},
+        ])
+        g.current_round['hands'][1] = []
+        g.current_round['hands'][3] = [
+            {'suit': 'hearts', 'rank': '7'},
+            {'suit': 'spades', 'rank': 'A'},
+        ]
+        g.current_round['current_trick'] = [
+            {'position': 0, 'suit': 'hearts', 'rank': 'A'},
+            {'position': 1, 'suit': 'hearts', 'rank': 'K'},
+            {'position': 2, 'suit': 'hearts', 'rank': 'Q'},
+        ]
+        g.current_round['current_turn'] = 3
+
+        result = g.play_card(3, 'spades', 'A')
+        assert 'error' not in result
+        assert result['current_trick'] == []
+        assert result['mg_target']['position'] == 3
+
+        result = g.call_mg(0)
+        assert result['round_result']['mg_result']['valid'] is True
+        assert result['round_result']['awarded'] == {'0': 16, '1': 0}
+
+
 class TestScoring:
     def _finish_fake_round(
         self,

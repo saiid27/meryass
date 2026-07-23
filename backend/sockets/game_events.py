@@ -118,6 +118,43 @@ def on_declare(data):
     emit('game:declarations', {'position': member.position, **result}, to=room.code)
 
 
+@socketio.on('game:mg')
+def on_mg(data):
+    ctx = resolve_context(data, require_player=True)
+    if ctx is None:
+        return
+    _user, room, member = ctx
+
+    if room.status != 'playing':
+        auth_error('Game is not in progress')
+        return
+
+    session = get_session(room.id)
+    if not session:
+        auth_error('No active game session')
+        return
+
+    result = session.call_mg(member.position)
+    if 'error' in result:
+        emit('error', result)
+        return
+
+    emit('game:state_update', {'state': result.get('state', {})}, to=room.code)
+    emit('game:round_result', {
+        'result': result.get('round_result'),
+        'game_winner': result.get('game_winner'),
+    }, to=room.code)
+
+    if result['game_winner'] is not None:
+        _finish_game(room, session, result['game_winner'])
+        remove_session(room.id)
+    else:
+        new_state = session.start_round()
+        emit('game:new_round', {'state': new_state}, to=room.code)
+        _broadcast_hands(session, room.code)
+        schedule_bot_turns(room.id, room.code)
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

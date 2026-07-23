@@ -91,6 +91,8 @@ class GameProvider extends ChangeNotifier {
   void declare(String token, String roomCode) =>
       SocketService.declare(token, roomCode);
 
+  void mg(String token, String roomCode) => SocketService.mg(token, roomCode);
+
   void clearRoundResult() {
     _roundResult = null;
     notifyListeners();

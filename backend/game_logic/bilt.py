@@ -76,6 +76,7 @@ class BiltGame:
             'bidding_user_id': None,
             'tricks': [],
             'current_trick': [],
+            'mg_target': None,
             'trick_counts': {0: 0, 1: 0},
             'current_turn': None,
             'declared_positions': set(),     # tracks who already declared
@@ -207,9 +208,25 @@ class BiltGame:
         r = self.current_round
         hand = r['hands'][position]
         card = next(c for c in hand if c['suit'] == suit and c['rank'] == rank)
+        lead_suit = r['current_trick'][0]['suit'] if r['current_trick'] else None
+        mg_valid = bool(
+            lead_suit
+            and suit != lead_suit
+            and any(c['suit'] == lead_suit for c in hand)
+        )
 
         hand.remove(card)
         r['current_trick'].append({'position': position, 'suit': suit, 'rank': rank})
+        r['mg_target'] = None
+        if lead_suit is not None:
+            r['mg_target'] = {
+                'position': position,
+                'team': self.players[position]['team'],
+                'suit': suit,
+                'rank': rank,
+                'lead_suit': lead_suit,
+                'valid': mg_valid,
+            }
 
         if len(r['current_trick']) == 4:
             return self._resolve_current_trick()
@@ -230,9 +247,59 @@ class BiltGame:
         hand = r['hands'][position]
         if not any(c['suit'] == suit and c['rank'] == rank for c in hand):
             return 'Card not in hand'
-        if not self._is_legal_play(position, suit):
-            return 'Invalid card play — must follow suit or trump rules'
         return None
+
+    def call_mg(self, challenger_position: int) -> dict:
+        r = self.current_round
+        if not r or r['status'] != 'playing':
+            return {'error': 'Not in playing phase'}
+
+        target = r.get('mg_target')
+        if not target:
+            return {'error': 'No MG target'}
+        if challenger_position == target['position']:
+            return {'error': 'Cannot call MG on yourself'}
+
+        challenger_team = self.players[challenger_position]['team']
+        target_team = target['team']
+        winning_team = challenger_team if target['valid'] else target_team
+        losing_team = 1 - winning_team
+        round_points = self._round_score_total(r['mode'])
+        awarded = {winning_team: round_points, losing_team: 0}
+
+        for team, pts in awarded.items():
+            self.team_scores[team] += pts
+
+        r['status'] = 'finished'
+        r['team_trick_pts'] = self._team_trick_points(r)
+        r['team_decl_pts'] = dict(r['team_declarations'])
+        r['awarded'] = awarded
+        r['cot_team'] = None
+        r['mg_result'] = {
+            'challenger_position': challenger_position,
+            'target_position': target['position'],
+            'target_team': target_team,
+            'valid': target['valid'],
+            'winning_team': winning_team,
+        }
+        r['mg_target'] = None
+
+        winner = next(
+            (team for team, score in self.team_scores.items() if score >= MATCH_WIN_SCORE),
+            None
+        )
+
+        if winner is not None:
+            self.state = 'game_end'
+        else:
+            self.dealer_position = (self.dealer_position + 1) % 4
+            self.state = 'round_end'
+
+        return {
+            'state': self._public_state(),
+            'round_result': self._serializable_round_result(r),
+            'game_winner': winner,
+        }
 
     def _is_legal_play(self, position: int, suit: str) -> bool:
         r = self.current_round
@@ -325,9 +392,7 @@ class BiltGame:
 
         # ── Step 1: separate trick-card points from declaration points ──────
         # WIN_THRESHOLD is checked against trick points ONLY.
-        team_trick_pts: dict[int, int] = {0: 0, 1: 0}
-        for trick in r['tricks']:
-            team_trick_pts[trick['winner_team']] += trick['points']
+        team_trick_pts = self._team_trick_points(r)
 
         team_decl_pts: dict[int, int] = dict(r['team_declarations'])  # {0:…, 1:…}
 
@@ -430,6 +495,7 @@ class BiltGame:
             'team_scores':     {str(k): v for k, v in self.team_scores.items()},
             'awarded':         {str(k): v for k, v in r['awarded'].items()},
             'cot_team':        r.get('cot_team'),
+            'mg_result':       r.get('mg_result'),
             'status':          r['status'],
         }
 
@@ -437,6 +503,15 @@ class BiltGame:
         """Convert raw card/declaration points to the displayed Baloot score."""
         divisor = 5 if mode == 'sans_atout' else 10
         return (raw_points * 2 + divisor) // (2 * divisor)
+
+    def _round_score_total(self, mode: str) -> int:
+        return 26 if mode == 'sans_atout' else 16
+
+    def _team_trick_points(self, r: dict) -> dict[int, int]:
+        team_trick_pts: dict[int, int] = {0: 0, 1: 0}
+        for trick in r['tricks']:
+            team_trick_pts[trick['winner_team']] += trick['points']
+        return team_trick_pts
 
     # ------------------------------------------------------------------
     # Public state (broadcast-safe — no private hand data)
@@ -461,6 +536,7 @@ class BiltGame:
             'turned_card': r.get('turned_card'),
             'current_turn': r.get('current_turn'),
             'current_trick': r.get('current_trick', []),
+            'mg_target': self._public_mg_target(r),
             'tricks_played': len(r['tricks']),
             'trick_counts': r.get('trick_counts'),
             'status': r['status'],
@@ -476,6 +552,18 @@ class BiltGame:
         if time.time() <= self.bid_choices_visible_until:
             return self.last_bid_choices
         return {}
+
+    def _public_mg_target(self, r: dict) -> Optional[dict]:
+        target = r.get('mg_target')
+        if not target:
+            return None
+        return {
+            'position': target['position'],
+            'team': target['team'],
+            'suit': target['suit'],
+            'rank': target['rank'],
+            'lead_suit': target['lead_suit'],
+        }
 
     def get_hand(self, position: int) -> list:
         if self.current_round:
