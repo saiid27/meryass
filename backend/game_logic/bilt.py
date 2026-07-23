@@ -22,6 +22,7 @@ Rules implemented
   Cot (8/8 tricks) doubles total points. Match won at 100 game-points.
 """
 
+import random
 import time
 from typing import Optional
 from .deck import (
@@ -84,7 +85,7 @@ class BiltGame:
             'turned_card': turned_card,
             'mode': None,                    # 'hokm' | 'sans_atout'
             'trump_suit': None,
-            'bidding_player': (self.dealer_position + 1) % 4,
+            'bidding_player': random.randrange(4),
             'bid_choices': {},
             'accepted_bid': None,
             'coins': None,

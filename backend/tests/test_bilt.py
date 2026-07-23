@@ -57,6 +57,11 @@ class TestStartRound:
         g = _started_round()
         assert g.current_round['status'] == 'bidding'
 
+    def test_first_bidder_is_randomized(self, monkeypatch):
+        monkeypatch.setattr(bilt_module.random, 'randrange', lambda size: 2)
+        g = _started_round()
+        assert g.current_round['bidding_player'] == 2
+
     def test_turned_card_is_in_remaining(self):
         g = _started_round()
         r = g.current_round

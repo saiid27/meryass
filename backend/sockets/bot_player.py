@@ -1,10 +1,13 @@
-"""Small deterministic bot loop for development rooms."""
+"""Small bot loop for development rooms."""
+import random
 import time
+from typing import Optional
 
 from flask import current_app
 
 from extensions import db, socketio
-from game_logic.bilt import get_session, remove_session
+from game_logic.bilt import BID_STRENGTH, BID_SUITS, SUIT_BIDS, get_session, remove_session
+from game_logic.deck import NON_TRUMP_POINTS, TRUMP_POINTS, card_value
 from models.game import Game
 from models.room import Room, RoomPlayer
 from models.user import User
@@ -12,6 +15,138 @@ from dev_bots import is_bot_user
 
 
 _running_rooms = set()
+
+
+def _bid_team(session, bid: Optional[dict]):
+    if not bid:
+        return None
+    return session.players[bid['position']]['team']
+
+
+def _available_regular_bids(accepted_bid: Optional[dict]) -> list[str]:
+    current_strength = BID_STRENGTH.get(accepted_bid['action'], 0) if accepted_bid else 0
+    return [
+        action
+        for action, strength in BID_STRENGTH.items()
+        if strength > current_strength
+    ]
+
+
+def _hand_sans_points(hand: list[dict]) -> int:
+    return sum(NON_TRUMP_POINTS[card['rank']] for card in hand)
+
+
+def _hand_to_points(hand: list[dict], trump_suit: Optional[str]) -> int:
+    return sum(
+        TRUMP_POINTS[card['rank']]
+        if trump_suit and card['suit'] == trump_suit
+        else NON_TRUMP_POINTS[card['rank']]
+        for card in hand
+    )
+
+
+def _suit_bid_score(hand: list[dict], suit: str) -> int:
+    suited = [card for card in hand if card['suit'] == suit]
+    return len(suited) * 4 + sum(NON_TRUMP_POINTS[card['rank']] for card in suited)
+
+
+def _best_suit_bid(hand: list[dict]) -> tuple[str, int]:
+    action, suit = max(
+        BID_SUITS.items(),
+        key=lambda item: _suit_bid_score(hand, item[1]),
+    )
+    return action, _suit_bid_score(hand, suit)
+
+
+def _is_last_chance_without_bid(current_round: dict) -> bool:
+    return current_round.get('accepted_bid') is None and len(current_round['bid_choices']) >= 3
+
+
+def _choose_bot_bid(session, position: int) -> str:
+    current_round = session.current_round
+    accepted_bid = current_round.get('accepted_bid')
+    if current_round.get('coins') is not None:
+        return 'pass'
+
+    hand = session.get_hand(position)
+    bot_team = session.players[position]['team']
+    bid_team = _bid_team(session, accepted_bid)
+
+    if (
+        accepted_bid
+        and accepted_bid['action'] in SUIT_BIDS
+        and bot_team != bid_team
+        and (_hand_sans_points(hand) >= 28 or random.random() < 0.18)
+    ):
+        return 'coins'
+
+    available = _available_regular_bids(accepted_bid)
+    if not available:
+        return 'pass'
+
+    if accepted_bid and bot_team == bid_team and random.random() < 0.85:
+        return 'pass'
+
+    candidates: list[tuple[str, int]] = []
+    turned_suit = current_round['turned_card']['suit']
+    to_points = _hand_to_points(hand, turned_suit)
+    sans_points = _hand_sans_points(hand)
+    best_suit_action, best_suit_points = _best_suit_bid(hand)
+
+    if 'to' in available and to_points >= 35:
+        candidates.append(('to', to_points + 10))
+    if 'sans' in available and sans_points >= 27:
+        candidates.append(('sans', sans_points + 6))
+    if best_suit_action in available and best_suit_points >= 18:
+        candidates.append((best_suit_action, best_suit_points))
+
+    if not candidates and accepted_bid is None:
+        if _is_last_chance_without_bid(current_round):
+            candidates.append((best_suit_action, best_suit_points))
+        elif best_suit_action in available and random.random() < 0.25:
+            candidates.append((best_suit_action, best_suit_points))
+        elif 'sans' in available and random.random() < 0.10:
+            candidates.append(('sans', sans_points))
+
+    if not candidates:
+        return 'pass'
+
+    candidates = [candidate for candidate in candidates if candidate[0] in available]
+    if not candidates:
+        return 'pass'
+    candidates.sort(key=lambda item: (BID_STRENGTH[item[0]], item[1]), reverse=True)
+    return candidates[0][0]
+
+
+def _choose_bot_card(session, position: int) -> Optional[dict]:
+    hand = list(session.get_hand(position))
+    legal_cards = [
+        card for card in hand
+        if session._is_legal_play(position, card['suit'])
+    ]
+    choices = legal_cards or hand
+    if not choices:
+        return None
+
+    current_round = session.current_round
+    if not current_round['current_trick']:
+        return max(
+            choices,
+            key=lambda card: card_value(
+                card,
+                current_round.get('trump_suit'),
+                current_round.get('mode'),
+            ),
+        )
+
+    return min(
+        choices,
+        key=lambda card: card_value(
+            card,
+            current_round.get('trump_suit'),
+            current_round.get('mode'),
+        ),
+    )
 
 
 def schedule_bot_turns(room_id: int, room_code: str) -> None:
@@ -122,7 +257,8 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                     if position is None or not _bot_at(room_id, position):
                         return
 
-                    result = session.place_bid(position, 'pass')
+                    action = _choose_bot_bid(session, position)
+                    result = session.place_bid(position, action)
                     if 'error' in result:
                         return
 
@@ -140,13 +276,11 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         socketio.sleep(wait_for)
                         continue
 
-                    result = None
-                    for card in list(session.get_hand(position)):
-                        candidate = session.play_card(position, card['suit'], card['rank'])
-                        if 'error' not in candidate:
-                            result = candidate
-                            break
-                    if result is None:
+                    card = _choose_bot_card(session, position)
+                    if card is None:
+                        return
+                    result = session.play_card(position, card['suit'], card['rank'])
+                    if 'error' in result:
                         return
 
                     if 'game_winner' not in result:
