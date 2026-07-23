@@ -34,8 +34,8 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS   = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
-        'pool_size': 10,
-        'max_overflow': 20,
+        'pool_size': int(os.environ.get('DB_POOL_SIZE', '10')),
+        'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', '20')),
     }
 
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)

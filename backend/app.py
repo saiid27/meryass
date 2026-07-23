@@ -57,6 +57,10 @@ def create_app(config_class=Config):
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
 
+    @app.get('/health')
+    def health_check():
+        return jsonify({'status': 'ok'}), 200
+
     with app.app_context():
         db.create_all()
         _ensure_room_schema()
