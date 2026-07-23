@@ -99,6 +99,10 @@ class _GameScreenState extends State<GameScreen> {
                 _buildTurnBanner(size),
               if (state.status == 'bidding')
                 _buildBiddingPanel(size, game, auth, state),
+              if (state.status == 'bidding' &&
+                  game.isMyBidTurn &&
+                  _canShowCoins(game, state))
+                _buildCoinsButton(size, game, auth),
               if (game.roundResult != null && game.gameWinner == null)
                 _buildRoundResultOverlay(game),
             ],
@@ -535,8 +539,8 @@ class _GameScreenState extends State<GameScreen> {
     final canCall = target.position != game.myPosition;
 
     return Positioned(
-      top: math.max(14.0, size.height * 0.08),
-      left: size.width * 0.46,
+      top: 54,
+      left: 14,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -757,7 +761,6 @@ class _GameScreenState extends State<GameScreen> {
     final isMyBidTurn = game.isMyBidTurn;
     final panelWidth = math.min(390.0, size.width * 0.48);
     final availableBids = _availableBidActions(state);
-    final canShowCoins = _canShowCoins(game, state);
 
     return Positioned(
       width: panelWidth,
@@ -805,13 +808,6 @@ class _GameScreenState extends State<GameScreen> {
                           Colors.white70,
                           () => game.bid(auth.token!, widget.roomCode, 'pass'),
                         ),
-                        if (canShowCoins)
-                          _compactBidButton(
-                            context.tr('coins'),
-                            const Color(0xFF4FC3F7),
-                            () =>
-                                game.bid(auth.token!, widget.roomCode, 'coins'),
-                          ),
                         if (availableBids.contains('to'))
                           _compactBidButton(
                             context.tr('to'),
@@ -859,6 +855,44 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoinsButton(Size size, GameProvider game, AuthProvider auth) {
+    const width = 82.0;
+    return Positioned(
+      width: width,
+      left: (size.width - width) / 2,
+      bottom: math.max(18.0, size.height * 0.07),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => game.bid(auth.token!, widget.roomCode, 'coins'),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFB3261E),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.gold, width: 1.5),
+              boxShadow: const [
+                BoxShadow(color: Colors.black45, blurRadius: 8),
+              ],
+            ),
+            child: Text(
+              context.tr('coins'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
         ),
       ),
     );
