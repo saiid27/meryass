@@ -84,6 +84,39 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         socketio.emit('game:new_round', {'state': new_state}, to=room_code)
                         _broadcast_human_hands(session)
 
+                elif current_round['status'] == 'trick_pending':
+                    wait_for = current_round.get('turn_available_at', 0) - time.time()
+                    if wait_for > 0:
+                        socketio.sleep(wait_for)
+                    result = session.complete_pending_trick()
+                    if result is None:
+                        continue
+
+                    if 'game_winner' not in result:
+                        socketio.emit('game:state_update', {'state': result}, to=room_code)
+                    else:
+                        socketio.emit(
+                            'game:state_update',
+                            {'state': result.get('state', {})},
+                            to=room_code,
+                        )
+                        socketio.emit(
+                            'game:round_result',
+                            {
+                                'result': result.get('round_result'),
+                                'game_winner': result.get('game_winner'),
+                            },
+                            to=room_code,
+                        )
+                        if result['game_winner'] is not None:
+                            _finish_game(room, session, result['game_winner'])
+                            remove_session(room_id)
+                            return
+
+                        new_state = session.start_round()
+                        socketio.emit('game:new_round', {'state': new_state}, to=room_code)
+                        _broadcast_human_hands(session)
+
                 elif current_round['status'] == 'bidding':
                     position = current_round.get('bidding_player')
                     if position is None or not _bot_at(room_id, position):

@@ -30,7 +30,8 @@ from .deck import (
     card_value, resolve_trick, detect_declarations,
 )
 
-TURN_DELAY_SECONDS = 5
+DEFAULT_TURN_DELAY_SECONDS = 3
+TURN_DELAY_SECONDS = DEFAULT_TURN_DELAY_SECONDS
 WIN_THRESHOLD_HOKM      = 82   # out of 162 card-trick points
 WIN_THRESHOLD_SANS_ATOUT = 66   # out of 130 card-trick points (no trump J/9 bonus)
 MATCH_WIN_SCORE = 100
@@ -253,7 +254,10 @@ class BiltGame:
             }
 
         if len(r['current_trick']) == 4:
-            return self._resolve_current_trick()
+            r['status'] = 'trick_pending'
+            r['current_turn'] = None
+            r['turn_available_at'] = time.time() + TURN_DELAY_SECONDS
+            return self._public_state()
 
         r['current_turn'] = (position + 1) % 4
         r['turn_available_at'] = time.time() + TURN_DELAY_SECONDS
@@ -278,7 +282,7 @@ class BiltGame:
 
     def call_mg(self, challenger_position: int) -> dict:
         r = self.current_round
-        if not r or r['status'] != 'playing':
+        if not r or r['status'] not in {'playing', 'trick_pending'}:
             return {'error': 'Not in playing phase'}
 
         target = r.get('mg_target')
@@ -327,6 +331,14 @@ class BiltGame:
             'round_result': self._serializable_round_result(r),
             'game_winner': winner,
         }
+
+    def complete_pending_trick(self) -> Optional[dict]:
+        r = self.current_round
+        if not r or r['status'] != 'trick_pending':
+            return None
+        if time.time() < r.get('turn_available_at', 0):
+            return None
+        return self._resolve_current_trick()
 
     def _is_legal_play(self, position: int, suit: str) -> bool:
         r = self.current_round
@@ -403,10 +415,12 @@ class BiltGame:
         })
         r['trick_counts'][winner_team] += 1
         r['current_trick'] = []
+        r['mg_target'] = None
 
         if trick_number == 8:
             return self._finish_round()
 
+        r['status'] = 'playing'
         r['current_turn'] = winner_pos
         r['turn_available_at'] = time.time() + TURN_DELAY_SECONDS
         return self._public_state()

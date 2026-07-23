@@ -215,6 +215,9 @@ class TestDeclarations:
 
 
 class TestPlayCard:
+    def test_turn_delay_is_three_seconds(self):
+        assert bilt_module.DEFAULT_TURN_DELAY_SECONDS == 3
+
     def _pick_legal_card(self, hand, trick, trump_suit, mode):
         """Return the first card that is legal to play given trick state."""
         if not trick:
@@ -240,6 +243,8 @@ class TestPlayCard:
             result = g.play_card(pos, card['suit'], card['rank'])
             if i < 3:
                 assert 'error' not in result, f'pos={pos} card={card} error: {result}'
+        assert result['status'] == 'trick_pending'
+        result = g.complete_pending_trick()
         return result
 
     def test_wrong_turn_rejected(self):
@@ -350,7 +355,7 @@ class TestMg:
         assert result['round_result']['awarded'] == {'1': 26, '0': 0}
         assert g.team_scores == {0: 0, 1: 26}
 
-    def test_mg_target_stays_visible_after_fourth_card_resolves_trick(self):
+    def test_mg_target_stays_visible_after_fourth_card_before_trick_resolves(self):
         g = self._mg_round([
             {'suit': 'hearts', 'rank': '7'},
             {'suit': 'spades', 'rank': 'A'},
@@ -369,7 +374,8 @@ class TestMg:
 
         result = g.play_card(3, 'spades', 'A')
         assert 'error' not in result
-        assert result['current_trick'] == []
+        assert result['status'] == 'trick_pending'
+        assert len(result['current_trick']) == 4
         assert result['mg_target']['position'] == 3
 
         result = g.call_mg(0)
@@ -500,9 +506,11 @@ class TestScoring:
                     lead_suit = r['current_trick'][0]['suit'] if r['current_trick'] else None
                     card = next(
                         (c for c in hand if lead_suit and c['suit'] == lead_suit),
-                        hand[0]
+                        hand[0],
                     )
                     last_result = g.play_card(pos, card['suit'], card['rank'])
+                if last_result and last_result.get('status') == 'trick_pending':
+                    last_result = g.complete_pending_trick()
             if last_result and last_result.get('game_winner') is not None:
                 break
             if g.state == 'game_end':
