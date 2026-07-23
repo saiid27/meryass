@@ -159,10 +159,10 @@ class TestBidding:
         assert g.current_round['mode'] == 'sans_atout'
         assert g.current_round['trump_suit'] == 'clubs'
 
-    def test_coins_only_against_suit_bid_and_blocks_more_bids(self):
+    def test_coins_against_to_bid_and_blocks_more_bids(self):
         g = _started_round()
         bidder = g.current_round['bidding_player']
-        result = g.place_bid(bidder, 'kerew')
+        result = g.place_bid(bidder, 'to')
         assert 'error' not in result
 
         result = g.place_bid(g.current_round['bidding_player'], 'coins')

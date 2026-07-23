@@ -191,8 +191,8 @@ class BiltGame:
             return 'Only pass is available after coins'
         if normalized_action == 'coins':
             accepted = r.get('accepted_bid')
-            if accepted is None or accepted['action'] not in SUIT_BIDS:
-                return 'Coins is only available against a suit bid'
+            if accepted is None:
+                return 'Coins is only available against an accepted bid'
             if self.players[position]['team'] == self.players[accepted['position']]['team']:
                 return 'Coins must be called by the opposing team'
             return None

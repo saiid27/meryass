@@ -861,18 +861,23 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildCoinsButton(Size size, GameProvider game, AuthProvider auth) {
-    const width = 82.0;
+    final isLandscape = size.width > size.height;
+    const width = 94.0;
+    final top = isLandscape ? size.height * 0.61 : null;
+    final bottom = isLandscape ? null : math.max(18.0, size.height * 0.07);
     return Positioned(
       width: width,
-      left: (size.width - width) / 2,
-      bottom: math.max(18.0, size.height * 0.07),
+      right: isLandscape ? 16 : null,
+      left: isLandscape ? null : (size.width - width) / 2,
+      top: top,
+      bottom: bottom,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => game.bid(auth.token!, widget.roomCode, 'coins'),
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            height: 38,
+            height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: const Color(0xFFB3261E),
@@ -882,15 +887,30 @@ class _GameScreenState extends State<GameScreen> {
                 BoxShadow(color: Colors.black45, blurRadius: 8),
               ],
             ),
-            child: Text(
-              context.tr('coins'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.tr('coins'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  context.tr('guaranteed'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.gold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -933,11 +953,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   bool _canShowCoins(GameProvider game, GameStateModel state) {
-    const suitBids = {'pik', 'kere', 'kerew', 'treve'};
     final accepted = state.acceptedBid;
-    if (accepted == null ||
-        state.coins != null ||
-        !suitBids.contains(accepted.action)) {
+    if (accepted == null || state.coins != null) {
       return false;
     }
     final myPosition = game.myPosition;

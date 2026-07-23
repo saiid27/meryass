@@ -6,7 +6,7 @@ from typing import Optional
 from flask import current_app
 
 from extensions import db, socketio
-from game_logic.bilt import BID_STRENGTH, BID_SUITS, SUIT_BIDS, get_session, remove_session
+from game_logic.bilt import BID_STRENGTH, BID_SUITS, get_session, remove_session
 from game_logic.deck import NON_TRUMP_POINTS, TRUMP_POINTS, card_value
 from models.game import Game
 from models.room import Room, RoomPlayer
@@ -74,7 +74,6 @@ def _choose_bot_bid(session, position: int) -> str:
 
     if (
         accepted_bid
-        and accepted_bid['action'] in SUIT_BIDS
         and bot_team != bid_team
         and (_hand_sans_points(hand) >= 28 or random.random() < 0.18)
     ):

@@ -127,6 +127,7 @@ const Map<String, Map<String, String>> appStrings = {
   'kerew': {'fr': 'kerew', 'ar': 'kerew'},
   'treve': {'fr': 'treve', 'ar': 'treve'},
   'coins': {'fr': 'coins', 'ar': 'coins'},
+  'guaranteed': {'fr': 'assuré', 'ar': 'مضمون'},
   'no_trump': {'fr': 'Sans-atout', 'ar': 'بلا كوز'},
   'choose_trump': {'fr': 'Choisir l\'atout :', 'ar': 'اختر الكوز:'},
   'team1': {'fr': 'Équipe 1', 'ar': 'الفريق 1'},
