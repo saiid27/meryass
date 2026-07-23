@@ -30,9 +30,24 @@ from .deck import (
     card_value, resolve_trick, detect_declarations,
 )
 
+TURN_DELAY_SECONDS = 5
 WIN_THRESHOLD_HOKM      = 82   # out of 162 card-trick points
 WIN_THRESHOLD_SANS_ATOUT = 66   # out of 130 card-trick points (no trump J/9 bonus)
 MATCH_WIN_SCORE = 100
+BID_STRENGTH = {
+    'treve': 1,
+    'kerew': 2,
+    'kere': 3,
+    'pik': 4,
+    'sans': 5,
+    'to': 6,
+}
+BID_SUITS = {
+    'pik': 'spades',
+    'kere': 'hearts',
+    'kerew': 'diamonds',
+    'treve': 'clubs',
+}
 
 
 class BiltGame:
@@ -101,7 +116,7 @@ class BiltGame:
             'action': action,
             'suit': suit,
         }
-        if action != 'pass' and r['accepted_bid'] is None:
+        if action != 'pass' and self._is_higher_bid(action, r['accepted_bid']):
             r['accepted_bid'] = {
                 'position': position,
                 'action': action,
@@ -124,13 +139,15 @@ class BiltGame:
         action = accepted['action']
         suit = accepted.get('suit')
 
-        # Bid accepted
         if action == 'to':
             r['mode'] = 'hokm'
             r['trump_suit'] = suit or r['turned_card']['suit']
-        else:  # sans
+        elif action == 'sans':
             r['mode'] = 'sans_atout'
             r['trump_suit'] = None
+        else:
+            r['mode'] = 'hokm'
+            r['trump_suit'] = BID_SUITS[action]
 
         r['bidding_team'] = self.players[position]['team']
         r['bidding_user_id'] = self.players[position]['user_id']
@@ -146,6 +163,7 @@ class BiltGame:
 
         r['status'] = 'playing'
         r['current_turn'] = (self.dealer_position + 1) % 4
+        r['turn_available_at'] = time.time()
         self.state = 'playing'
         return self._public_state()
 
@@ -160,8 +178,11 @@ class BiltGame:
         if action not in VALID_ACTIONS:
             return f'Invalid action: {action}'
         normalized_action = self._normalize_bid_action(action)
-        if r.get('accepted_bid') is not None and normalized_action != 'pass':
-            return 'Only pass is available after a bid'
+        if (
+            normalized_action != 'pass'
+            and not self._is_higher_bid(normalized_action, r.get('accepted_bid'))
+        ):
+            return 'Bid must be higher than the current bid'
         if action == 'take' and suit is None:
             return 'Invalid suit: None'
         if normalized_action == 'to' and suit is not None and suit not in VALID_SUITS:
@@ -177,9 +198,14 @@ class BiltGame:
     def _normalize_bid_action(self, action: str) -> str:
         if action in {'take', 'to'}:
             return 'to'
-        if action in {'sans_atout', 'sans'}:
+        if action in {'sans_atout', 'sans', 'san'}:
             return 'sans'
         return action
+
+    def _is_higher_bid(self, action: str, accepted_bid: Optional[dict]) -> bool:
+        if accepted_bid is None:
+            return action in BID_STRENGTH
+        return BID_STRENGTH.get(action, 0) > BID_STRENGTH.get(accepted_bid['action'], 0)
 
     def _next_bidding_player(self, position: int) -> Optional[int]:
         r = self.current_round
@@ -230,6 +256,7 @@ class BiltGame:
             return self._resolve_current_trick()
 
         r['current_turn'] = (position + 1) % 4
+        r['turn_available_at'] = time.time() + TURN_DELAY_SECONDS
         return self._public_state()
 
     def _validate_play(self, position: int, suit: str, rank: str) -> Optional[str]:
@@ -238,6 +265,8 @@ class BiltGame:
             return 'Not in playing phase'
         if r['current_turn'] != position:
             return 'Not your turn'
+        if time.time() < r.get('turn_available_at', 0):
+            return 'Turn is not available yet'
         if suit not in VALID_SUITS:
             return f'Invalid suit: {suit}'
         if rank not in VALID_RANKS:
@@ -379,6 +408,7 @@ class BiltGame:
             return self._finish_round()
 
         r['current_turn'] = winner_pos
+        r['turn_available_at'] = time.time() + TURN_DELAY_SECONDS
         return self._public_state()
 
     # ------------------------------------------------------------------
@@ -520,6 +550,7 @@ class BiltGame:
             'bidding_team': r.get('bidding_team'),
             'turned_card': r.get('turned_card'),
             'current_turn': r.get('current_turn'),
+            'turn_available_at': r.get('turn_available_at'),
             'current_trick': r.get('current_trick', []),
             'mg_target': self._public_mg_target(r),
             'tricks_played': len(r['tricks']),

@@ -1,4 +1,6 @@
 """Small deterministic bot loop for development rooms."""
+import time
+
 from flask import current_app
 
 from extensions import db, socketio
@@ -100,6 +102,10 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                     position = current_round['current_turn']
                     if not _bot_at(room_id, position):
                         return
+                    wait_for = current_round.get('turn_available_at', 0) - time.time()
+                    if wait_for > 0:
+                        socketio.sleep(wait_for)
+                        continue
 
                     result = None
                     for card in list(session.get_hand(position)):

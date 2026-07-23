@@ -12,6 +12,7 @@ class GameStateModel {
   final int? biddingTeam;
   final CardModel? turnedCard;
   final int? currentTurn;
+  final double? turnAvailableAt;
   final List<TrickCard> currentTrick;
   final MgTarget? mgTarget;
   final int tricksPlayed;
@@ -30,6 +31,7 @@ class GameStateModel {
     this.biddingTeam,
     this.turnedCard,
     this.currentTurn,
+    this.turnAvailableAt,
     this.currentTrick = const [],
     this.mgTarget,
     this.tricksPlayed = 0,
@@ -76,6 +78,7 @@ class GameStateModel {
           ? CardModel.fromJson(json['turned_card'] as Map<String, dynamic>)
           : null,
       currentTurn: json['current_turn'],
+      turnAvailableAt: (json['turn_available_at'] as num?)?.toDouble(),
       currentTrick: trickList,
       mgTarget: json['mg_target'] != null
           ? MgTarget.fromJson(json['mg_target'] as Map<String, dynamic>)

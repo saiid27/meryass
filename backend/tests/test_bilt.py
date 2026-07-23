@@ -1,5 +1,7 @@
 """Unit tests for BiltGame — bilt.py game logic."""
+import time
 import pytest
+import game_logic.bilt as bilt_module
 from game_logic.bilt import BiltGame, MATCH_WIN_SCORE
 
 
@@ -9,6 +11,11 @@ PLAYERS = [
     {'user_id': 3, 'position': 2, 'team': 0},
     {'user_id': 4, 'position': 3, 'team': 1},
 ]
+
+
+@pytest.fixture(autouse=True)
+def no_turn_delay(monkeypatch):
+    monkeypatch.setattr(bilt_module, 'TURN_DELAY_SECONDS', 0)
 
 
 def _new_game() -> BiltGame:
@@ -123,7 +130,29 @@ class TestBidding:
         result = g.place_bid(r['bidding_player'], 'to')
         assert 'error' not in result
         result = g.place_bid(g.current_round['bidding_player'], 'sans')
-        assert result.get('error') == 'Only pass is available after a bid'
+        assert result.get('error') == 'Bid must be higher than the current bid'
+
+    def test_kere_can_only_be_overbid_by_higher_options(self):
+        g = _started_round()
+        result = g.place_bid(g.current_round['bidding_player'], 'kere')
+        assert 'error' not in result
+
+        result = g.place_bid(g.current_round['bidding_player'], 'kerew')
+        assert result.get('error') == 'Bid must be higher than the current bid'
+
+        result = g.place_bid(g.current_round['bidding_player'], 'pik')
+        assert 'error' not in result
+        assert g.current_round['accepted_bid']['action'] == 'pik'
+
+    def test_suit_bid_sets_trump_suit(self):
+        g = _started_round()
+        result = g.place_bid(g.current_round['bidding_player'], 'treve')
+        assert 'error' not in result
+        while g.current_round['status'] == 'bidding':
+            result = g.place_bid(g.current_round['bidding_player'], 'pass')
+            assert 'error' not in result
+        assert g.current_round['mode'] == 'hokm'
+        assert g.current_round['trump_suit'] == 'clubs'
 
     def test_bid_choices_remain_visible_after_bid(self):
         g = _bid_accepted(action='to', suit=None)
@@ -235,6 +264,15 @@ class TestPlayCard:
         )
         result = g.play_card(pos, absent[0], absent[1])
         assert 'error' in result
+
+    def test_turn_delay_rejects_early_play(self):
+        g = _bid_accepted()
+        r = g.current_round
+        r['turn_available_at'] = time.time() + 5
+        pos = r['current_turn']
+        card = r['hands'][pos][0]
+        result = g.play_card(pos, card['suit'], card['rank'])
+        assert result.get('error') == 'Turn is not available yet'
 
     def test_eight_tricks_finish_round(self):
         g = _bid_accepted()

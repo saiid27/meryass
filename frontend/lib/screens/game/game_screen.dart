@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -27,6 +28,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   CardModel? _selectedCard;
   bool _gameOverShown = false;
+  Timer? _turnTicker;
   // Saved in initState so dispose() can access it without a BuildContext.
   late final GameProvider _gameProv;
 
@@ -39,6 +41,9 @@ class _GameScreenState extends State<GameScreen> {
       DeviceOrientation.landscapeRight,
     ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _turnTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -46,6 +51,7 @@ class _GameScreenState extends State<GameScreen> {
     // Restore portrait FIRST — guaranteed even if provider cleanup throws.
     SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _turnTicker?.cancel();
     _gameProv.removeSocketListeners();
     super.dispose();
   }
@@ -87,7 +93,9 @@ class _GameScreenState extends State<GameScreen> {
               if (state.mgTarget != null && state.status == 'playing')
                 _buildMgButton(size, game, auth, state),
               _buildHand(size, game, auth, state),
-              if (game.isMyTurn && state.status == 'playing')
+              if (game.isMyTurn &&
+                  state.status == 'playing' &&
+                  _turnDelayElapsed(state))
                 _buildTurnBanner(size),
               if (state.status == 'bidding')
                 _buildBiddingPanel(size, game, auth, state),
@@ -423,7 +431,8 @@ class _GameScreenState extends State<GameScreen> {
     GameStateModel state,
   ) {
     final hand = game.myHand;
-    final isMyTurn = game.isMyTurn && state.status == 'playing';
+    final isMyTurn =
+        game.isMyTurn && state.status == 'playing' && _turnDelayElapsed(state);
     final areaWidth = size.width * 0.69;
     final cardHeight = math.min(108.0, size.height * 0.29);
     final cardWidth = cardHeight * 0.68;
@@ -481,6 +490,12 @@ class _GameScreenState extends State<GameScreen> {
     } else {
       setState(() => _selectedCard = card);
     }
+  }
+
+  bool _turnDelayElapsed(GameStateModel state) {
+    final availableAt = state.turnAvailableAt;
+    if (availableAt == null) return true;
+    return DateTime.now().millisecondsSinceEpoch / 1000 >= availableAt;
   }
 
   Widget _buildTurnBanner(Size size) {
@@ -741,9 +756,7 @@ class _GameScreenState extends State<GameScreen> {
   ) {
     final isMyBidTurn = game.isMyBidTurn;
     final panelWidth = math.min(390.0, size.width * 0.48);
-    final hasAcceptedBid = state.bidChoices.values.any(
-      (choice) => choice == 'to' || choice == 'sans',
-    );
+    final availableBids = _availableBidActions(state);
 
     return Positioned(
       width: panelWidth,
@@ -791,19 +804,46 @@ class _GameScreenState extends State<GameScreen> {
                           Colors.white70,
                           () => game.bid(auth.token!, widget.roomCode, 'pass'),
                         ),
-                        if (!hasAcceptedBid) ...[
+                        if (availableBids.contains('to'))
+                          _compactBidButton(
+                            context.tr('to'),
+                            AppTheme.gold,
+                            () => game.bid(auth.token!, widget.roomCode, 'to'),
+                          ),
+                        if (availableBids.contains('sans'))
                           _compactBidButton(
                             context.tr('sans'),
                             const Color(0xFFD6A7FF),
                             () =>
                                 game.bid(auth.token!, widget.roomCode, 'sans'),
                           ),
+                        if (availableBids.contains('pik'))
                           _compactBidButton(
-                            context.tr('to'),
-                            AppTheme.gold,
-                            () => game.bid(auth.token!, widget.roomCode, 'to'),
+                            context.tr('pik'),
+                            Colors.white,
+                            () => game.bid(auth.token!, widget.roomCode, 'pik'),
                           ),
-                        ],
+                        if (availableBids.contains('kere'))
+                          _compactBidButton(
+                            context.tr('kere'),
+                            const Color(0xFFFF6B6B),
+                            () =>
+                                game.bid(auth.token!, widget.roomCode, 'kere'),
+                          ),
+                        if (availableBids.contains('kerew'))
+                          _compactBidButton(
+                            context.tr('kerew'),
+                            const Color(0xFFFF8E80),
+                            () =>
+                                game.bid(auth.token!, widget.roomCode, 'kerew'),
+                          ),
+                        if (availableBids.contains('treve'))
+                          _compactBidButton(
+                            context.tr('treve'),
+                            const Color(0xFF9AD8A3),
+                            () =>
+                                game.bid(auth.token!, widget.roomCode, 'treve'),
+                          ),
                       ],
                     ),
                   ],
@@ -827,6 +867,26 @@ class _GameScreenState extends State<GameScreen> {
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 11)),
     );
+  }
+
+  List<String> _availableBidActions(GameStateModel state) {
+    const strength = {
+      'treve': 1,
+      'kerew': 2,
+      'kere': 3,
+      'pik': 4,
+      'sans': 5,
+      'to': 6,
+    };
+    var currentStrength = 0;
+    for (final choice in state.bidChoices.values) {
+      final value = strength[choice] ?? 0;
+      if (value > currentStrength) currentStrength = value;
+    }
+    return strength.entries
+        .where((entry) => entry.value > currentStrength)
+        .map((entry) => entry.key)
+        .toList();
   }
 
   Widget _buildRoundResultOverlay(GameProvider game) {
