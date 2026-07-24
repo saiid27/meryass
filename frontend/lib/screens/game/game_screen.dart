@@ -93,6 +93,12 @@ class _GameScreenState extends State<GameScreen> {
               if (state.mgTarget != null && state.status == 'playing')
                 _buildMgButton(size, game, auth, state),
               _buildHand(size, game, auth, state),
+              if (game.isMyTurn &&
+                  state.status == 'playing' &&
+                  _turnDelayElapsed(state))
+                _buildTurnBanner(size),
+              if (state.status == 'bidding')
+                _buildBiddingPanel(size, game, auth, state),
               _buildCoinsButton(
                 size,
                 game,
@@ -102,12 +108,6 @@ class _GameScreenState extends State<GameScreen> {
                     game.isMyBidTurn &&
                     _canShowCoins(game, state),
               ),
-              if (game.isMyTurn &&
-                  state.status == 'playing' &&
-                  _turnDelayElapsed(state))
-                _buildTurnBanner(size),
-              if (state.status == 'bidding')
-                _buildBiddingPanel(size, game, auth, state),
               if (game.roundResult != null && game.gameWinner == null)
                 _buildRoundResultOverlay(game),
             ],
@@ -893,10 +893,10 @@ class _GameScreenState extends State<GameScreen> {
             decoration: BoxDecoration(
               color: enabled
                   ? const Color(0xFFB3261E)
-                  : Colors.black.withValues(alpha: 0.38),
+                  : const Color(0xFF6F1B17),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: enabled ? AppTheme.gold : Colors.white30,
+                color: enabled ? AppTheme.gold : Colors.white54,
                 width: 1.5,
               ),
               boxShadow: const [
@@ -911,7 +911,7 @@ class _GameScreenState extends State<GameScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: enabled ? Colors.white : Colors.white54,
+                    color: Colors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
@@ -921,7 +921,7 @@ class _GameScreenState extends State<GameScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: enabled ? AppTheme.gold : Colors.white38,
+                    color: enabled ? AppTheme.gold : Colors.white70,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                   ),
