@@ -107,6 +107,7 @@ const Map<String, Map<String, String>> appStrings = {
     'ar': 'سيتم تعديل صفحة الشحن لاحقاً.',
   },
   'search_player': {'fr': 'Chercher un joueur', 'ar': 'البحث عن لاعب'},
+  'search_player_short': {'fr': 'Joueur', 'ar': 'لاعب'},
   'search_by_phone': {'fr': 'Recherche par numéro', 'ar': 'البحث بالرقم'},
   'player_found': {'fr': 'Joueur trouvé', 'ar': 'تم العثور على اللاعب'},
   'wins': {'fr': 'Victoires', 'ar': 'انتصارات'},

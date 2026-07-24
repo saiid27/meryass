@@ -18,10 +18,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _editingUsername = false;
   final _usernameCtrl = TextEditingController();
-  final _searchPhoneCtrl = TextEditingController();
-  UserModel? _foundUser;
-  String? _searchError;
-  bool _searching = false;
 
   @override
   void initState() {
@@ -32,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _usernameCtrl.dispose();
-    _searchPhoneCtrl.dispose();
     super.dispose();
   }
 
@@ -69,28 +64,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
-  Future<void> _searchPlayer() async {
-    final phone = _searchPhoneCtrl.text.trim();
-    if (phone.isEmpty) return;
-    setState(() {
-      _searching = true;
-      _searchError = null;
-      _foundUser = null;
-    });
-    try {
-      final data = await ApiService.searchUserByPhone(phone);
-      if (!mounted) return;
-      setState(() {
-        _foundUser = UserModel.fromJson(data['user'] as Map<String, dynamic>);
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _searchError = e.message);
-    } finally {
-      if (mounted) setState(() => _searching = false);
     }
   }
 
@@ -141,8 +114,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildRechargeButton(),
             const SizedBox(height: 14),
             _buildStatsGrid(user),
-            const SizedBox(height: 18),
-            _buildPlayerSearch(),
           ],
         ),
       ),
@@ -292,110 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPlayerSearch() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            context.tr('search_player'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _searchPhoneCtrl,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: context.tr('search_by_phone'),
-              prefixIcon: const Icon(Icons.phone_outlined),
-              suffixIcon: IconButton(
-                onPressed: _searching ? null : _searchPlayer,
-                icon: _searching
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.search),
-              ),
-            ),
-            onSubmitted: (_) => _searchPlayer(),
-          ),
-          if (_searchError != null) ...[
-            const SizedBox(height: 10),
-            Text(_searchError!, style: const TextStyle(color: AppTheme.red)),
-          ],
-          if (_foundUser != null) ...[
-            const SizedBox(height: 14),
-            _searchedPlayerCard(_foundUser!),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _searchedPlayerCard(UserModel user) {
-    final winRate = (user.winRate * 100).toStringAsFixed(1);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            user.username,
-            style: const TextStyle(
-              color: AppTheme.gold,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(user.phone ?? '', style: const TextStyle(color: Colors.white54)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: [
-              _miniStat(context.tr('wins'), '${user.wins}'),
-              _miniStat(context.tr('losses'), '${user.losses}'),
-              _miniStat(context.tr('rounds_played'), '${user.roundsPlayed}'),
-              _miniStat(context.tr('rank'), '#${user.rank}'),
-              _miniStat(context.tr('win_rate'), '$winRate%'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _miniStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        '$label: $value',
-        style: const TextStyle(color: Colors.white70, fontSize: 12),
       ),
     );
   }

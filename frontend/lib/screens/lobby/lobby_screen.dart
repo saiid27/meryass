@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/room_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/room_provider.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/extensions.dart';
 import '../profile/profile_screen.dart';
@@ -306,12 +308,16 @@ class _LobbyScreenState extends State<LobbyScreen> {
               label: Text(context.tr('create_room')),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton.icon(
               onPressed: _showJoinByCodeDialog,
               icon: const Icon(Icons.vpn_key_outlined),
-              label: Text(context.tr('join_by_code')),
+              label: Text(
+                context.tr('join_by_code'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.gold,
                 side: const BorderSide(color: AppTheme.gold),
@@ -322,9 +328,116 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _showPlayerSearchDialog,
+              icon: const Icon(Icons.search),
+              label: Text(
+                context.tr('search_player_short'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryLight,
+                side: const BorderSide(color: AppTheme.primaryLight),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  void _showPlayerSearchDialog() {
+    final phoneCtrl = TextEditingController();
+    UserModel? foundUser;
+    String? error;
+    bool searching = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) {
+          Future<void> search() async {
+            final phone = phoneCtrl.text.trim();
+            if (phone.isEmpty) return;
+            setS(() {
+              searching = true;
+              error = null;
+              foundUser = null;
+            });
+            try {
+              final data = await ApiService.searchUserByPhone(phone);
+              if (!ctx.mounted) return;
+              setS(() {
+                foundUser = UserModel.fromJson(
+                  data['user'] as Map<String, dynamic>,
+                );
+              });
+            } on ApiException catch (e) {
+              if (!ctx.mounted) return;
+              setS(() => error = e.message);
+            } finally {
+              if (ctx.mounted) setS(() => searching = false);
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: AppTheme.cardBackground,
+            title: Text(context.tr('search_player')),
+            content: SizedBox(
+              width: 330,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: context.tr('search_by_phone'),
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                    onSubmitted: (_) => search(),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(error!, style: const TextStyle(color: AppTheme.red)),
+                  ],
+                  if (foundUser != null) ...[
+                    const SizedBox(height: 14),
+                    _PlayerSearchResult(user: foundUser!),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(context.tr('cancel')),
+              ),
+              ElevatedButton.icon(
+                onPressed: searching ? null : search,
+                icon: searching
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.search),
+                label: Text(context.tr('search_player_short')),
+              ),
+            ],
+          );
+        },
+      ),
+    ).whenComplete(phoneCtrl.dispose);
   }
 
   Widget _buildRoomList(RoomProvider prov) {
@@ -590,6 +703,96 @@ class _StatusBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 11)),
+    );
+  }
+}
+
+class _PlayerSearchResult extends StatelessWidget {
+  final UserModel user;
+
+  const _PlayerSearchResult({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final winRate = (user.winRate * 100).toStringAsFixed(1);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            user.username,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppTheme.gold,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if ((user.phone ?? '').isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              user.phone!,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _PlayerSearchChip(
+                label: context.tr('wins'),
+                value: '${user.wins}',
+              ),
+              _PlayerSearchChip(
+                label: context.tr('losses'),
+                value: '${user.losses}',
+              ),
+              _PlayerSearchChip(
+                label: context.tr('rounds_played'),
+                value: '${user.roundsPlayed}',
+              ),
+              _PlayerSearchChip(
+                label: context.tr('rank'),
+                value: '#${user.rank}',
+              ),
+              _PlayerSearchChip(
+                label: context.tr('win_rate'),
+                value: '$winRate%',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayerSearchChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PlayerSearchChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(color: Colors.white70, fontSize: 11),
+      ),
     );
   }
 }
