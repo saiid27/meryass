@@ -99,6 +99,13 @@ const Map<String, Map<String, String>> appStrings = {
   'logout': {'fr': 'Déconnexion', 'ar': 'تسجيل الخروج'},
   'username_label': {'fr': 'Nom d\'utilisateur', 'ar': 'اسم المستخدم'},
   'rounds_played': {'fr': 'Tours joués', 'ar': 'الجولات'},
+  'rank': {'fr': 'Classement', 'ar': 'التصنيف'},
+  'recharge': {'fr': 'Recharge', 'ar': 'الشحن'},
+  'recharge_title': {'fr': 'Recharge', 'ar': 'الشحن'},
+  'recharge_coming_soon': {
+    'fr': 'La page de recharge sera configurée plus tard.',
+    'ar': 'سيتم تعديل صفحة الشحن لاحقاً.',
+  },
   'search_player': {'fr': 'Chercher un joueur', 'ar': 'البحث عن لاعب'},
   'search_by_phone': {'fr': 'Recherche par numéro', 'ar': 'البحث بالرقم'},
   'player_found': {'fr': 'Joueur trouvé', 'ar': 'تم العثور على اللاعب'},

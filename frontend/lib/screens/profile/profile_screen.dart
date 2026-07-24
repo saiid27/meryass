@@ -126,20 +126,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
         child: Column(
           children: [
             _buildAvatar(avatarUrl, user.username),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
             _buildUsernameSection(user.username),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               user.phone ?? '',
               style: const TextStyle(color: Colors.white38, fontSize: 14),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+            _buildRechargeButton(),
+            const SizedBox(height: 14),
             _buildStatsGrid(user),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             _buildPlayerSearch(),
           ],
         ),
@@ -151,14 +153,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Stack(
       children: [
         CircleAvatar(
-          radius: 56,
+          radius: 44,
           backgroundColor: AppTheme.primary,
           backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
           child: avatarUrl == null
               ? Text(
                   username.substring(0, 1).toUpperCase(),
                   style: const TextStyle(
-                    fontSize: 40,
+                    fontSize: 32,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -171,8 +173,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: GestureDetector(
             onTap: _pickAvatar,
             child: Container(
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: AppTheme.primaryLight,
                 shape: BoxShape.circle,
@@ -220,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           username,
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -236,13 +238,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsGrid(UserModel user) {
     final winRate = (user.winRate * 100).toStringAsFixed(1);
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 1.8,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
         _statCard(
           context.tr('wins'),
@@ -263,12 +261,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
           AppTheme.primaryLight,
         ),
         _statCard(
+          context.tr('rank'),
+          '#${user.rank}',
+          Icons.leaderboard,
+          const Color(0xFF4FC3F7),
+        ),
+        _statCard(
           context.tr('win_rate'),
           '$winRate%',
           Icons.bar_chart,
           Colors.purple,
         ),
       ],
+    );
+  }
+
+  Widget _buildRechargeButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RechargeScreen()),
+        ),
+        icon: const Icon(Icons.account_balance_wallet_outlined),
+        label: Text(context.tr('recharge')),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
     );
   }
 
@@ -353,6 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _miniStat(context.tr('wins'), '${user.wins}'),
               _miniStat(context.tr('losses'), '${user.losses}'),
               _miniStat(context.tr('rounds_played'), '${user.roundsPlayed}'),
+              _miniStat(context.tr('rank'), '#${user.rank}'),
               _miniStat(context.tr('win_rate'), '$winRate%'),
             ],
           ),
@@ -376,31 +401,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _statCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+    return SizedBox(
+      width: (MediaQuery.sizeOf(context).width - 52) / 2,
+      height: 72,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RechargeScreen extends StatelessWidget {
+  const RechargeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(context.tr('recharge_title'))),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.account_balance_wallet_outlined,
+                color: AppTheme.gold,
+                size: 58,
+              ),
+              const SizedBox(height: 18),
+              Text(
+                context.tr('recharge_coming_soon'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+            ],
           ),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 from extensions import db, bcrypt
 from datetime import datetime
 import re
+from sqlalchemy import and_, or_
 
 
 def normalize_phone(value):
@@ -41,6 +42,17 @@ class User(db.Model):
     def is_bot(self):
         return self.email.endswith('@devbot.meryas')
 
+    @property
+    def rank(self):
+        better_players = User.query.filter(
+            User.id != self.id,
+            or_(
+                User.wins > self.wins,
+                and_(User.wins == self.wins, User.total_points > self.total_points),
+            ),
+        ).count()
+        return better_players + 1
+
     def to_dict(self, public=True):
         data = {
             'id': self.id,
@@ -51,6 +63,7 @@ class User(db.Model):
             'losses': self.losses,
             'rounds_played': self.rounds_played,
             'total_points': self.total_points,
+            'rank': self.rank,
             'is_online': self.is_online,
             'is_bot': self.is_bot,
             'created_at': self.created_at.isoformat(),

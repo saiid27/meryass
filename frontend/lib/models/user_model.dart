@@ -8,6 +8,7 @@ class UserModel {
   final int losses;
   final int roundsPlayed;
   final int totalPoints;
+  final int rank;
   final bool isOnline;
   final bool isBot;
 
@@ -21,6 +22,7 @@ class UserModel {
     this.losses = 0,
     this.roundsPlayed = 0,
     this.totalPoints = 0,
+    this.rank = 0,
     this.isOnline = false,
     this.isBot = false,
   });
@@ -36,6 +38,7 @@ class UserModel {
       losses: json['losses'] ?? 0,
       roundsPlayed: json['rounds_played'] ?? 0,
       totalPoints: json['total_points'] ?? 0,
+      rank: json['rank'] ?? 0,
       isOnline: json['is_online'] ?? false,
       isBot: json['is_bot'] ?? false,
     );
