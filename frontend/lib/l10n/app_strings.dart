@@ -2,11 +2,8 @@
 /// Access via BuildContext.tr('key') — see utils/extensions.dart.
 const Map<String, Map<String, String>> appStrings = {
   // ── Auth ────────────────────────────────────────────────────────────────
-  'app_title': {'fr': 'Meryas', 'ar': 'مرياس'},
-  'app_subtitle': {
-    'fr': 'Jeu de cartes en ligne',
-    'ar': 'لعبة ورق عبر الإنترنت',
-  },
+  'app_title': {'fr': 'cart', 'ar': 'cart'},
+  'app_subtitle': {'fr': 'Jeu mauritanien', 'ar': 'لعبة موريتانية'},
   'phone_number': {'fr': 'Numéro de téléphone', 'ar': 'رقم الهاتف'},
   'password': {'fr': 'Mot de passe', 'ar': 'كلمة المرور'},
   'login': {'fr': 'Connexion', 'ar': 'تسجيل الدخول'},
