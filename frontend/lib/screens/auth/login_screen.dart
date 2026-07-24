@@ -151,14 +151,11 @@ class _LoginScreenState extends State<LoginScreen> {
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppTheme.primary, AppTheme.primaryLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
             borderRadius: BorderRadius.circular(24),
+            boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 14)],
           ),
-          child: const Icon(Icons.style, size: 56, color: Colors.white),
+          clipBehavior: Clip.antiAlias,
+          child: Image.asset('assets/images/app_icon.png', fit: BoxFit.cover),
         ),
         const SizedBox(height: 24),
         Text(
