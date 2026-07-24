@@ -36,7 +36,7 @@ class MeryasApp extends StatelessWidget {
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, localeProv, child) => MaterialApp(
-          title: 'Meryas',
+          title: 'cart mr',
           theme: AppTheme.dark,
           debugShowCheckedModeBanner: false,
           locale: localeProv.locale,
