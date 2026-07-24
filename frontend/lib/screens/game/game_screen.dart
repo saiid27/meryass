@@ -90,8 +90,6 @@ class _GameScreenState extends State<GameScreen> {
               _buildScoreBoard(size, state),
               _buildRoomBadge(),
               _buildExitButton(),
-              if (state.mgTarget != null && state.status == 'playing')
-                _buildMgButton(size, game, auth, state),
               _buildHand(size, game, auth, state),
               if (game.isMyTurn &&
                   state.status == 'playing' &&
@@ -106,7 +104,18 @@ class _GameScreenState extends State<GameScreen> {
                 enabled:
                     state.status == 'bidding' &&
                     game.isMyBidTurn &&
-                    _canShowCoins(game, state),
+                    state.coins == null &&
+                    state.acceptedBid != null,
+              ),
+              _buildMgButton(
+                size,
+                game,
+                auth,
+                state,
+                enabled:
+                    state.status == 'playing' &&
+                    state.mgTarget != null &&
+                    state.mgTarget!.position != game.myPosition,
               ),
               if (game.roundResult != null && game.gameWinner == null)
                 _buildRoundResultOverlay(game),
@@ -538,30 +547,28 @@ class _GameScreenState extends State<GameScreen> {
     Size size,
     GameProvider game,
     AuthProvider auth,
-    GameStateModel state,
-  ) {
-    final target = state.mgTarget!;
-    final canCall = target.position != game.myPosition;
-
+    GameStateModel state, {
+    required bool enabled,
+  }) {
     return Positioned(
       top: 54,
       left: 14,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: canCall ? () => game.mg(auth.token!, widget.roomCode) : null,
+          onTap: enabled ? () => game.mg(auth.token!, widget.roomCode) : null,
           borderRadius: BorderRadius.circular(14),
           child: Container(
             width: 72,
             height: 42,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: canCall
+              color: enabled
                   ? const Color(0xFFB3261E)
-                  : Colors.black.withValues(alpha: 0.35),
+                  : const Color(0xFF6F1B17),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: canCall ? AppTheme.gold : Colors.white24,
+                color: enabled ? AppTheme.gold : Colors.white54,
                 width: 1.4,
               ),
               boxShadow: const [
@@ -966,19 +973,6 @@ class _GameScreenState extends State<GameScreen> {
         .where((entry) => entry.value > currentStrength)
         .map((entry) => entry.key)
         .toList();
-  }
-
-  bool _canShowCoins(GameProvider game, GameStateModel state) {
-    final accepted = state.acceptedBid;
-    if (accepted == null || state.coins != null) {
-      return false;
-    }
-    final myPosition = game.myPosition;
-    final players = context.read<RoomProvider>().gamePlayers;
-    final me = players
-        .where((player) => player.position == myPosition)
-        .firstOrNull;
-    return me?.team != null && me!.team != accepted.team;
   }
 
   Widget _buildRoundResultOverlay(GameProvider game) {
