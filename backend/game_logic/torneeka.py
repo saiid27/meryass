@@ -138,7 +138,16 @@ class TorneekaGame:
         r = self.current_round
         if not r or not r['discard'] or not r.get('active_suit'):
             return True
-        return suit == r['active_suit']
+        return any(
+            card['suit'] == suit and self._matches_table(card)
+            for card in r['hands'].get(position, [])
+        )
+
+    def _is_legal_card(self, position: int, card: dict) -> bool:
+        r = self.current_round
+        if not r or not r['discard'] or not r.get('active_suit'):
+            return True
+        return self._matches_table(card)
 
     def _matches_table(self, card: dict) -> bool:
         r = self.current_round

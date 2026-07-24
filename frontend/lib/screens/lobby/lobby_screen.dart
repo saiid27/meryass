@@ -45,6 +45,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) {
           final canContinue = step != 0 || nameCtrl.text.trim().isNotEmpty;
+          final totalSteps = gameType == 'torneeka' ? 2 : 3;
+          final isLastStep = step >= totalSteps - 1;
           final titles = [
             context.tr('room_name'),
             context.tr('game_type'),
@@ -61,7 +63,12 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _CreateRoomSteps(currentStep: step),
+                    _CreateRoomSteps(
+                      currentStep: step > totalSteps - 1
+                          ? totalSteps - 1
+                          : step,
+                      totalSteps: totalSteps,
+                    ),
                     const SizedBox(height: 20),
                     Text(
                       titles[step],
@@ -155,7 +162,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 onPressed: !canContinue
                     ? null
                     : () async {
-                        if (step < 2) {
+                        if (!isLastStep) {
                           setS(() => step += 1);
                           return;
                         }
@@ -168,7 +175,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         );
                       },
                 child: Text(
-                  step < 2 ? context.tr('next') : context.tr('create'),
+                  isLastStep ? context.tr('create') : context.tr('next'),
                 ),
               ),
             ],
@@ -570,15 +577,16 @@ class _RoomCard extends StatelessWidget {
 
 class _CreateRoomSteps extends StatelessWidget {
   final int currentStep;
+  final int totalSteps;
 
-  const _CreateRoomSteps({required this.currentStep});
+  const _CreateRoomSteps({required this.currentStep, required this.totalSteps});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (var i = 0; i < 3; i++) ...[
+        for (var i = 0; i < totalSteps; i++) ...[
           AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             width: i == currentStep ? 28 : 9,
@@ -588,7 +596,7 @@ class _CreateRoomSteps extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          if (i < 2) const SizedBox(width: 7),
+          if (i < totalSteps - 1) const SizedBox(width: 7),
         ],
       ],
     );

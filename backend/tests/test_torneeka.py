@@ -61,6 +61,62 @@ def test_same_rank_and_j_can_change_active_suit():
     result = g.play_card(2, 'spades', 'J')
     assert 'error' not in result
     assert g.current_round['active_suit'] == 'spades'
+    assert result['mg_target'] is None
+
+
+def test_same_rank_change_does_not_create_mg_target():
+    g = _game()
+    g.current_round = {
+        'hands': {
+            0: [{'suit': 'clubs', 'rank': '7'}, {'suit': 'clubs', 'rank': '8'}],
+            1: [{'suit': 'hearts', 'rank': '7'}],
+            2: [],
+            3: [],
+        },
+        'draw_pile': [],
+        'discard': [{'position': 3, 'suit': 'hearts', 'rank': '7'}],
+        'active_suit': 'hearts',
+        'current_turn': 0,
+        'turn_available_at': 0,
+        'mg_target': None,
+        'pending_draw': None,
+        'status': 'playing',
+        'winner_position': None,
+    }
+    g.state = 'playing'
+
+    result = g.play_card(0, 'clubs', '7')
+    assert 'error' not in result
+    assert result['mg_target'] is None
+
+
+def test_bot_card_choice_uses_torneeka_discard_stack():
+    from sockets.bot_player import _choose_bot_card
+
+    g = _game()
+    g.current_round = {
+        'hands': {
+            0: [
+                {'suit': 'clubs', 'rank': '8'},
+                {'suit': 'spades', 'rank': 'J'},
+            ],
+            1: [],
+            2: [],
+            3: [],
+        },
+        'draw_pile': [],
+        'discard': [],
+        'active_suit': None,
+        'current_turn': 0,
+        'turn_available_at': 0,
+        'mg_target': None,
+        'pending_draw': None,
+        'status': 'playing',
+        'winner_position': None,
+    }
+    g.state = 'playing'
+
+    assert _choose_bot_card(g, 0) == {'suit': 'spades', 'rank': 'J'}
 
 
 def test_mg_adds_three_cards_without_ending_match():

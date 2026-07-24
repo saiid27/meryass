@@ -120,16 +120,23 @@ def _choose_bot_bid(session, position: int) -> str:
 
 def _choose_bot_card(session, position: int) -> Optional[dict]:
     hand = list(session.get_hand(position))
-    legal_cards = [
-        card for card in hand
-        if session._is_legal_play(position, card['suit'])
-    ]
+    if hasattr(session, '_is_legal_card'):
+        legal_cards = [
+            card for card in hand
+            if session._is_legal_card(position, card)
+        ]
+    else:
+        legal_cards = [
+            card for card in hand
+            if session._is_legal_play(position, card['suit'])
+        ]
     choices = legal_cards or hand
     if not choices:
         return None
 
     current_round = session.current_round
-    if not current_round['current_trick']:
+    table_cards = current_round.get('current_trick') or current_round.get('discard') or []
+    if not table_cards:
         return max(
             choices,
             key=lambda card: card_value(
