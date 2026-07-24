@@ -6,11 +6,7 @@
         android:label="cart mr"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
-        <!--
-          android:usesCleartextTraffic="true" allows plain HTTP in development.
-          Remove or set to false for production builds and use HTTPS.
-        -->
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
