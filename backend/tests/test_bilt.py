@@ -3,6 +3,7 @@ import time
 import pytest
 import game_logic.bilt as bilt_module
 from game_logic.bilt import BiltGame, MATCH_WIN_SCORE
+from sockets.bot_player import _choose_bot_bid
 
 
 PLAYERS = [
@@ -182,6 +183,35 @@ class TestBidding:
             assert 'error' not in result
         result = g.place_bid(same_team, 'coins')
         assert result.get('error') == 'Coins must be called by the opposing team'
+
+    def test_coins_requires_an_accepted_bid(self):
+        g = _started_round()
+        bidder = g.current_round['bidding_player']
+        result = g.place_bid(bidder, 'coins')
+        assert result.get('error') == 'Coins is only available against an accepted bid'
+
+    def test_coins_against_sans_bid_and_blocks_more_bids(self):
+        g = _started_round()
+        bidder = g.current_round['bidding_player']
+        result = g.place_bid(bidder, 'sans')
+        assert 'error' not in result
+
+        result = g.place_bid(g.current_round['bidding_player'], 'coins')
+        assert 'error' not in result
+        assert g.current_round['coins']['position'] == (bidder + 1) % 4
+        result = g.place_bid(g.current_round['bidding_player'], 'to')
+        assert result.get('error') == 'Only pass is available after coins'
+
+    @pytest.mark.parametrize('color_bid', ['pik', 'kere', 'kerew', 'treve'])
+    def test_coins_allowed_against_every_color_bid(self, color_bid):
+        g = _started_round()
+        bidder = g.current_round['bidding_player']
+        result = g.place_bid(bidder, color_bid)
+        assert 'error' not in result
+
+        result = g.place_bid(g.current_round['bidding_player'], 'coins')
+        assert 'error' not in result
+        assert g.current_round['coins']['position'] == (bidder + 1) % 4
 
     def test_bid_choices_remain_visible_after_bid(self):
         g = _bid_accepted(action='to', suit=None)
@@ -535,6 +565,48 @@ class TestScoring:
         assert result['round_result']['awarded'] == {'0': 8, '1': 8}
         assert g.team_scores == {0: 8, 1: 8}
 
+    def test_coins_awards_32_against_to_bid(self):
+        g, result = self._finish_fake_round(
+            mode='hokm',
+            team0_raw=90,
+            team1_raw=72,
+            accepted_action='to',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 32, '1': 0}
+        assert g.team_scores == {0: 32, 1: 0}
+
+        g, result = self._finish_fake_round(
+            mode='hokm',
+            team0_raw=72,
+            team1_raw=90,
+            accepted_action='to',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 0, '1': 32}
+        assert g.team_scores == {0: 0, 1: 32}
+
+    def test_coins_awards_32_against_sans_bid(self):
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=80,
+            team1_raw=50,
+            accepted_action='sans',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 32, '1': 0}
+        assert g.team_scores == {0: 32, 1: 0}
+
+        g, result = self._finish_fake_round(
+            mode='sans_atout',
+            team0_raw=50,
+            team1_raw=80,
+            accepted_action='sans',
+            coins={'position': 1, 'team': 1},
+        )
+        assert result['round_result']['awarded'] == {'0': 0, '1': 32}
+        assert g.team_scores == {0: 0, 1: 32}
+
     def test_declarations_are_tracked_but_not_added_to_base_score_yet(self):
         g, result = self._finish_fake_round(
             mode='hokm',
@@ -608,3 +680,47 @@ class TestScoring:
         if result and result.get('game_winner') is not None:
             winner = result['game_winner']
             assert g.team_scores[winner] >= MATCH_WIN_SCORE
+
+
+class TestBotCoins:
+    _strong_hand = [
+        {'suit': 'hearts', 'rank': 'A'},
+        {'suit': 'diamonds', 'rank': 'A'},
+        {'suit': 'clubs', 'rank': 'A'},
+        {'suit': 'spades', 'rank': 'A'},
+    ]
+
+    def _game_with_accepted_bid(self, action='to', suit='hearts') -> BiltGame:
+        g = _new_game()
+        g.current_round = {
+            'accepted_bid': {'position': 0, 'action': action, 'suit': suit},
+            'coins': None,
+            'bid_choices': {0: {'action': action, 'suit': suit}},
+            'hands': {1: list(self._strong_hand), 3: list(self._strong_hand)},
+            'turned_card': {'suit': suit, 'rank': 'K'},
+        }
+        return g
+
+    def test_bot_calls_coins_against_opposing_teams_bid(self):
+        g = self._game_with_accepted_bid(action='to')
+        assert _choose_bot_bid(g, 1) == 'coins'
+
+    def test_bot_calls_coins_against_every_bid_type(self):
+        for action, suit in [
+            ('sans', None), ('pik', None), ('kere', None),
+            ('kerew', None), ('treve', None),
+        ]:
+            g = self._game_with_accepted_bid(action=action, suit=suit)
+            assert _choose_bot_bid(g, 1) == 'coins'
+
+    def test_bot_never_calls_coins_on_its_own_teams_bid(self):
+        g = self._game_with_accepted_bid(action='to')
+        # Position 3 is on the bidding team's opposing side... but position 2
+        # shares team 0 with the bidder (position 0).
+        g.current_round['hands'][2] = list(self._strong_hand)
+        assert _choose_bot_bid(g, 2) != 'coins'
+
+    def test_bot_only_passes_once_coins_already_called(self):
+        g = self._game_with_accepted_bid(action='to')
+        g.current_round['coins'] = {'position': 1, 'team': 1}
+        assert _choose_bot_bid(g, 3) == 'pass'
