@@ -2,6 +2,7 @@ import 'card_model.dart';
 
 class GameStateModel {
   final String roomId;
+  final String gameType;
   final String state;
   final Map<int, int> teamScores;
   final int? dealer;
@@ -19,10 +20,12 @@ class GameStateModel {
   final MgTarget? mgTarget;
   final int tricksPlayed;
   final Map<int, int> trickCounts;
+  final Map<int, int> handSizes;
   final String status;
 
   const GameStateModel({
     required this.roomId,
+    this.gameType = 'bilt',
     required this.state,
     required this.teamScores,
     this.dealer,
@@ -40,6 +43,7 @@ class GameStateModel {
     this.mgTarget,
     this.tricksPlayed = 0,
     this.trickCounts = const {},
+    this.handSizes = const {},
     this.status = 'bidding',
   });
 
@@ -56,6 +60,12 @@ class GameStateModel {
         trickCountsMap[int.parse(k.toString())] = v as int;
       });
     }
+    final handSizesMap = <int, int>{};
+    if (json['hand_sizes'] is Map) {
+      (json['hand_sizes'] as Map).forEach((k, v) {
+        handSizesMap[int.parse(k.toString())] = v as int;
+      });
+    }
     final trickList = <TrickCard>[];
     if (json['current_trick'] is List) {
       for (final t in json['current_trick'] as List) {
@@ -70,6 +80,7 @@ class GameStateModel {
     }
     return GameStateModel(
       roomId: json['room_id']?.toString() ?? '',
+      gameType: json['game_type'] ?? 'bilt',
       state: json['state'] ?? '',
       teamScores: scores,
       dealer: json['dealer'],
@@ -95,6 +106,7 @@ class GameStateModel {
           : null,
       tricksPlayed: json['tricks_played'] ?? 0,
       trickCounts: trickCountsMap,
+      handSizes: handSizesMap,
       status: json['status'] ?? 'bidding',
     );
   }

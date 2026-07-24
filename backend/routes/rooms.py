@@ -42,7 +42,7 @@ def create_room():
     scoring_mode = data.get('scoring_mode', 'zero')
     if scoring_mode not in VALID_SCORING_MODES:
         return jsonify({'error': 'Invalid scoring mode'}), 400
-    if game_type != 'bilt' or scoring_mode != 'zero':
+    if game_type == 'bilt' and scoring_mode != 'zero':
         return jsonify({'error': 'This game option is not available yet'}), 400
 
     is_private = data.get('is_private', False)

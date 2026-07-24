@@ -590,6 +590,7 @@ class BiltGame:
         r = self.current_round
         base: dict = {
             'room_id': self.room_id,
+            'game_type': 'bilt',
             'state': self.state,
             'team_scores': self.team_scores,
         }

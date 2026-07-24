@@ -92,7 +92,7 @@ def _start_game(room: Room, room_code: str) -> None:
     members = RoomPlayer.query.filter_by(room_id=room.id, is_spectator=False).all()
     if len(members) != 4:
         return
-    if room.game_type != 'bilt' or room.scoring_mode != 'zero':
+    if room.game_type == 'bilt' and room.scoring_mode != 'zero':
         auth_error('This game option is not available yet')
         return
 
@@ -101,7 +101,10 @@ def _start_game(room: Room, room_code: str) -> None:
     if existing_game:
         return
 
-    from game_logic.bilt import create_session, get_session
+    if room.game_type == 'torneeka':
+        from game_logic.torneeka import create_session, get_session
+    else:
+        from game_logic.bilt import create_session, get_session
     if get_session(room.id):
         return   # session already exists
 

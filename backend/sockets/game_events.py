@@ -3,7 +3,7 @@ from extensions import db, socketio
 from models.user import User
 from models.room import Room, RoomPlayer
 from models.game import Game
-from game_logic.bilt import get_session, remove_session
+from game_logic import bilt, torneeka
 from .auth import auth_error, resolve_context
 from .bot_player import schedule_bot_turns
 
@@ -26,7 +26,7 @@ def on_bid(data):
     action = data.get('action', '')
     suit = data.get('suit')
 
-    session = get_session(room.id)
+    session = _get_session(room.id)
     if not session:
         auth_error('No active game session')
         return
@@ -58,7 +58,7 @@ def on_play_card(data):
     suit = data.get('suit', '')
     rank = data.get('rank', '')
 
-    session = get_session(room.id)
+    session = _get_session(room.id)
     if not session:
         auth_error('No active game session')
         return
@@ -79,7 +79,7 @@ def on_play_card(data):
 
         if result['game_winner'] is not None:
             _finish_game(room, session, result['game_winner'])
-            remove_session(room.id)
+            _remove_session(room)
         else:
             new_state = session.start_round()
             emit('game:new_round', {'state': new_state}, to=room.code)
@@ -106,7 +106,7 @@ def on_declare(data):
         auth_error('Game is not in progress')
         return
 
-    session = get_session(room.id)
+    session = _get_session(room.id)
     if not session:
         auth_error('No active game session')
         return
@@ -130,7 +130,7 @@ def on_mg(data):
         auth_error('Game is not in progress')
         return
 
-    session = get_session(room.id)
+    session = _get_session(room.id)
     if not session:
         auth_error('No active game session')
         return
@@ -138,6 +138,11 @@ def on_mg(data):
     result = session.call_mg(member.position)
     if 'error' in result:
         emit('error', result)
+        return
+
+    if 'game_winner' not in result:
+        emit('game:state_update', {'state': result}, to=room.code)
+        schedule_bot_turns(room.id, room.code)
         return
 
     emit('game:state_update', {'state': result.get('state', {})}, to=room.code)
@@ -149,7 +154,7 @@ def on_mg(data):
 
     if result['game_winner'] is not None:
         _finish_game(room, session, result['game_winner'])
-        remove_session(room.id)
+        _remove_session(room)
     else:
         new_state = session.start_round()
         emit('game:new_round', {'state': new_state}, to=room.code)
@@ -170,6 +175,17 @@ def _broadcast_hands(session, room_code: str) -> None:
                 'hand': session.get_hand(pos),
                 'position': pos,
             }, to=u.socket_id)
+
+
+def _get_session(room_id: int):
+    return bilt.get_session(room_id) or torneeka.get_session(room_id)
+
+
+def _remove_session(room: Room) -> None:
+    if room.game_type == 'torneeka':
+        torneeka.remove_session(room.id)
+    else:
+        bilt.remove_session(room.id)
 
 
 def _record_round_played(room: Room) -> None:

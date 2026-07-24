@@ -87,7 +87,7 @@ class _GameScreenState extends State<GameScreen> {
               _buildOvalTable(size),
               _buildSeats(size, game, state),
               _buildTrick(size, game, state),
-              _buildScoreBoard(size, state),
+              if (state.gameType != 'torneeka') _buildScoreBoard(size, state),
               _buildRoomBadge(),
               _buildExitButton(),
               _buildHand(size, game, auth, state),
@@ -95,18 +95,19 @@ class _GameScreenState extends State<GameScreen> {
                   state.status == 'playing' &&
                   _turnDelayElapsed(state))
                 _buildTurnBanner(size),
-              if (state.status == 'bidding')
+              if (state.gameType != 'torneeka' && state.status == 'bidding')
                 _buildBiddingPanel(size, game, auth, state),
-              _buildCoinsButton(
-                size,
-                game,
-                auth,
-                enabled:
-                    state.status == 'bidding' &&
-                    game.isMyBidTurn &&
-                    state.coins == null &&
-                    state.acceptedBid != null,
-              ),
+              if (state.gameType != 'torneeka')
+                _buildCoinsButton(
+                  size,
+                  game,
+                  auth,
+                  enabled:
+                      state.status == 'bidding' &&
+                      game.isMyBidTurn &&
+                      state.coins == null &&
+                      state.acceptedBid != null,
+                ),
               _buildMgButton(
                 size,
                 game,
@@ -223,11 +224,13 @@ class _GameScreenState extends State<GameScreen> {
     final cardsPlayed = state.currentTrick.any(
       (card) => card.position == position,
     );
-    final estimatedCards = math.max(
-      0,
-      (state.status == 'bidding' ? 5 : 8 - state.tricksPlayed) -
-          (cardsPlayed ? 1 : 0),
-    );
+    final estimatedCards =
+        state.handSizes[position] ??
+        math.max(
+          0,
+          (state.status == 'bidding' ? 5 : 8 - state.tricksPlayed) -
+              (cardsPlayed ? 1 : 0),
+        );
     final displayName = isBot
         ? 'Bot ${position + 1}'
         : user?.username ?? '${context.tr('position')} ${position + 1}';
@@ -386,6 +389,8 @@ class _GameScreenState extends State<GameScreen> {
                 child: Text(
                   state.status == 'bidding'
                       ? context.tr('bidding_wait')
+                      : state.gameType == 'torneeka'
+                      ? context.tr('torneeka_empty')
                       : context.tr('trick_empty'),
                   style: const TextStyle(color: Colors.white30, fontSize: 12),
                 ),

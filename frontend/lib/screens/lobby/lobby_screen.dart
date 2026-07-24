@@ -97,10 +97,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
                             const SizedBox(height: 10),
                             _CreateOptionTile(
                               label: context.tr('torneeka'),
-                              trailing: context.tr('coming_soon'),
-                              selected: false,
-                              enabled: false,
-                              icon: Icons.lock_outline,
+                              selected: gameType == 'torneeka',
+                              icon: Icons.check,
+                              onTap: () => setS(() => gameType = 'torneeka'),
                             ),
                           ],
                         ),

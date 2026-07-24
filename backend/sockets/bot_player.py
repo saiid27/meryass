@@ -6,7 +6,8 @@ from typing import Optional
 from flask import current_app
 
 from extensions import db, socketio
-from game_logic.bilt import BID_STRENGTH, BID_SUITS, get_session, remove_session
+from game_logic import bilt, torneeka
+from game_logic.bilt import BID_STRENGTH, BID_SUITS
 from game_logic.deck import NON_TRUMP_POINTS, TRUMP_POINTS, card_value
 from models.game import Game
 from models.room import Room, RoomPlayer
@@ -148,6 +149,17 @@ def _choose_bot_card(session, position: int) -> Optional[dict]:
     )
 
 
+def _get_session(room_id: int):
+    return bilt.get_session(room_id) or torneeka.get_session(room_id)
+
+
+def _remove_session(room, room_id: int) -> None:
+    if room.game_type == 'torneeka':
+        torneeka.remove_session(room_id)
+    else:
+        bilt.remove_session(room_id)
+
+
 def schedule_bot_turns(room_id: int, room_code: str) -> None:
     """Run bot actions in the background until control returns to a person."""
     if room_id in _running_rooms:
@@ -218,7 +230,7 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
         with app.app_context():
             while True:
                 room = db.session.get(Room, room_id)
-                session = get_session(room_id)
+                session = _get_session(room_id)
                 if not room or room.status != 'playing' or not session:
                     return
 
@@ -257,7 +269,7 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         _record_round_played(room)
                         if result['game_winner'] is not None:
                             _finish_game(room, session, result['game_winner'])
-                            remove_session(room_id)
+                            _remove_session(room, room_id)
                             return
 
                         new_state = session.start_round()
@@ -314,7 +326,7 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         _record_round_played(room)
                         if result['game_winner'] is not None:
                             _finish_game(room, session, result['game_winner'])
-                            remove_session(room_id)
+                            _remove_session(room, room_id)
                             return
 
                         new_state = session.start_round()

@@ -118,6 +118,7 @@ const Map<String, Map<String, String>> appStrings = {
   // ── Game ────────────────────────────────────────────────────────────────
   'trump_label': {'fr': 'Atout', 'ar': 'الكوز'},
   'trick_empty': {'fr': 'Pli vide', 'ar': 'الطاولة فارغة'},
+  'torneeka_empty': {'fr': 'Départ', 'ar': 'البداية'},
   'your_turn': {'fr': 'Votre tour !', 'ar': 'دورك!'},
   'tap_again_to_play': {
     'fr': 'Appuyer à nouveau pour jouer',
