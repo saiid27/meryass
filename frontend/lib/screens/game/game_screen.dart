@@ -93,19 +93,21 @@ class _GameScreenState extends State<GameScreen> {
               if (state.mgTarget != null && state.status == 'playing')
                 _buildMgButton(size, game, auth, state),
               _buildHand(size, game, auth, state),
+              _buildCoinsButton(
+                size,
+                game,
+                auth,
+                enabled:
+                    state.status == 'bidding' &&
+                    game.isMyBidTurn &&
+                    _canShowCoins(game, state),
+              ),
               if (game.isMyTurn &&
                   state.status == 'playing' &&
                   _turnDelayElapsed(state))
                 _buildTurnBanner(size),
               if (state.status == 'bidding')
                 _buildBiddingPanel(size, game, auth, state),
-              if (state.status == 'bidding')
-                _buildCoinsButton(
-                  size,
-                  game,
-                  auth,
-                  enabled: game.isMyBidTurn && _canShowCoins(game, state),
-                ),
               if (game.roundResult != null && game.gameWinner == null)
                 _buildRoundResultOverlay(game),
             ],
@@ -871,13 +873,12 @@ class _GameScreenState extends State<GameScreen> {
   }) {
     final isLandscape = size.width > size.height;
     const width = 94.0;
-    final top = isLandscape ? size.height * 0.61 : null;
-    final bottom = isLandscape ? null : math.max(18.0, size.height * 0.07);
+    final bottom = isLandscape
+        ? math.max(22.0, size.height * 0.08)
+        : math.max(92.0, size.height * 0.11);
     return Positioned(
       width: width,
-      right: isLandscape ? 16 : null,
-      left: isLandscape ? null : (size.width - width) / 2,
-      top: top,
+      right: isLandscape ? 18 : 14,
       bottom: bottom,
       child: Material(
         color: Colors.transparent,
