@@ -69,7 +69,9 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
-    if (game.gameWinner != null && !_gameOverShown) {
+    final isTorneekaResult =
+        state.gameType == 'torneeka' && game.roundResult != null;
+    if (game.gameWinner != null && !_gameOverShown && !isTorneekaResult) {
       _gameOverShown = true;
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _showGameOverDialog(game.gameWinner!),
@@ -118,8 +120,9 @@ class _GameScreenState extends State<GameScreen> {
                     state.mgTarget != null &&
                     state.mgTarget!.position != game.myPosition,
               ),
-              if (game.roundResult != null && game.gameWinner == null)
-                _buildRoundResultOverlay(game),
+              if (game.roundResult != null &&
+                  (game.gameWinner == null || state.gameType == 'torneeka'))
+                _buildRoundResultOverlay(game, auth, state),
             ],
           );
         },
@@ -980,10 +983,17 @@ class _GameScreenState extends State<GameScreen> {
         .toList();
   }
 
-  Widget _buildRoundResultOverlay(GameProvider game) {
+  Widget _buildRoundResultOverlay(
+    GameProvider game,
+    AuthProvider auth,
+    GameStateModel state,
+  ) {
     final result = game.roundResult!;
+    final isTorneeka = state.gameType == 'torneeka';
+    final isTorneekaFinal = isTorneeka && game.gameWinner != null;
     final awarded = result['awarded'] as Map? ?? {};
     final teamScores = result['team_scores'] as Map? ?? {};
+    final winnerTeam = result['bidding_team'] as int?;
     int pointsFor(int team) =>
         (awarded[team] ?? awarded[team.toString()] ?? 0) as int;
     int totalFor(int team) =>
@@ -1013,31 +1023,53 @@ class _GameScreenState extends State<GameScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 14),
-              Text(
-                context.tr('round_points'),
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              _resultRow(context.tr('team1'), pointsFor(0), Colors.blueAccent),
-              const SizedBox(height: 8),
-              _resultRow(
-                context.tr('team2'),
-                pointsFor(1),
-                Colors.orangeAccent,
-              ),
-              const SizedBox(height: 14),
-              Divider(color: Colors.white.withValues(alpha: 0.16), height: 1),
-              const SizedBox(height: 12),
-              Text(
-                context.tr('total_points'),
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              _resultRow(context.tr('team1'), totalFor(0), Colors.blueAccent),
-              const SizedBox(height: 8),
-              _resultRow(context.tr('team2'), totalFor(1), Colors.orangeAccent),
-              if (result['cot_team'] != null) ...[
+              if (isTorneeka) ...[
+                const SizedBox(height: 14),
+                const Icon(Icons.emoji_events, color: AppTheme.gold, size: 40),
+                const SizedBox(height: 8),
+                Text(
+                  '${context.tr('winner_label')}: ${context.tr(winnerTeam == 1 ? 'team2' : 'team1')}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 14),
+                Text(
+                  context.tr('round_points'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                _resultRow(
+                  context.tr('team1'),
+                  pointsFor(0),
+                  Colors.blueAccent,
+                ),
+                const SizedBox(height: 8),
+                _resultRow(
+                  context.tr('team2'),
+                  pointsFor(1),
+                  Colors.orangeAccent,
+                ),
+                const SizedBox(height: 14),
+                Divider(color: Colors.white.withValues(alpha: 0.16), height: 1),
+                const SizedBox(height: 12),
+                Text(
+                  context.tr('total_points'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                _resultRow(context.tr('team1'), totalFor(0), Colors.blueAccent),
+                const SizedBox(height: 8),
+                _resultRow(
+                  context.tr('team2'),
+                  totalFor(1),
+                  Colors.orangeAccent,
+                ),
+              ],
+              if (!isTorneeka && result['cot_team'] != null) ...[
                 const SizedBox(height: 10),
                 Text(
                   context.tr('cot_label'),
@@ -1048,7 +1080,13 @@ class _GameScreenState extends State<GameScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: game.clearRoundResult,
+                  onPressed: () {
+                    if (isTorneekaFinal && auth.token != null) {
+                      game.nextRound(auth.token!, widget.roomCode);
+                    } else {
+                      game.clearRoundResult();
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,

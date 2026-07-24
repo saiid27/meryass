@@ -232,6 +232,22 @@ def _record_round_played(room) -> None:
     db.session.commit()
 
 
+def _record_torneeka_win(room, session, winner_team: int) -> None:
+    members = RoomPlayer.query.filter_by(
+        room_id=room.id,
+        is_spectator=False,
+    ).all()
+    for member in members:
+        user = member.user
+        if user and not is_bot_user(user):
+            if member.team == winner_team:
+                user.wins += 1
+            else:
+                user.losses += 1
+            user.total_points += session.team_scores[member.team]
+    db.session.commit()
+
+
 def _run_bot_turns(app, room_id: int, room_code: str) -> None:
     try:
         with app.app_context():
@@ -275,8 +291,15 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         )
                         _record_round_played(room)
                         if result['game_winner'] is not None:
-                            _finish_game(room, session, result['game_winner'])
-                            _remove_session(room, room_id)
+                            if room.game_type == 'torneeka':
+                                _record_torneeka_win(
+                                    room,
+                                    session,
+                                    result['game_winner'],
+                                )
+                            else:
+                                _finish_game(room, session, result['game_winner'])
+                                _remove_session(room, room_id)
                             return
 
                         new_state = session.start_round()
@@ -332,8 +355,15 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                         )
                         _record_round_played(room)
                         if result['game_winner'] is not None:
-                            _finish_game(room, session, result['game_winner'])
-                            _remove_session(room, room_id)
+                            if room.game_type == 'torneeka':
+                                _record_torneeka_win(
+                                    room,
+                                    session,
+                                    result['game_winner'],
+                                )
+                            else:
+                                _finish_game(room, session, result['game_winner'])
+                                _remove_session(room, room_id)
                             return
 
                         new_state = session.start_round()

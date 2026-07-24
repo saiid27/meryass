@@ -72,6 +72,9 @@ class GameProvider extends ChangeNotifier {
       final state = (data as Map<String, dynamic>)['state'];
       if (state != null) {
         _gameState = GameStateModel.fromJson(state as Map<String, dynamic>);
+        _roundResult = null;
+        _gameWinner = null;
+        _recentDeclarations = [];
         notifyListeners();
       }
     });
@@ -92,6 +95,9 @@ class GameProvider extends ChangeNotifier {
       SocketService.declare(token, roomCode);
 
   void mg(String token, String roomCode) => SocketService.mg(token, roomCode);
+
+  void nextRound(String token, String roomCode) =>
+      SocketService.nextRound(token, roomCode);
 
   void clearRoundResult() {
     _roundResult = null;

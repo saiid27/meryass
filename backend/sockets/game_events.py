@@ -78,8 +78,11 @@ def on_play_card(data):
         _record_round_played(room)
 
         if result['game_winner'] is not None:
-            _finish_game(room, session, result['game_winner'])
-            _remove_session(room)
+            if room.game_type == 'torneeka':
+                _record_torneeka_win(room, session, result['game_winner'])
+            else:
+                _finish_game(room, session, result['game_winner'])
+                _remove_session(room)
         else:
             new_state = session.start_round()
             emit('game:new_round', {'state': new_state}, to=room.code)
@@ -153,13 +156,44 @@ def on_mg(data):
     _record_round_played(room)
 
     if result['game_winner'] is not None:
-        _finish_game(room, session, result['game_winner'])
-        _remove_session(room)
+        if room.game_type == 'torneeka':
+            _record_torneeka_win(room, session, result['game_winner'])
+        else:
+            _finish_game(room, session, result['game_winner'])
+            _remove_session(room)
     else:
         new_state = session.start_round()
         emit('game:new_round', {'state': new_state}, to=room.code)
         _broadcast_hands(session, room.code)
         schedule_bot_turns(room.id, room.code)
+
+
+@socketio.on('game:next_round')
+def on_next_round(data):
+    ctx = resolve_context(data, require_player=True)
+    if ctx is None:
+        return
+    _user, room, _member = ctx
+
+    if room.status != 'playing':
+        auth_error('Game is not in progress')
+        return
+    if room.game_type != 'torneeka':
+        auth_error('Next round is only available for Torneeka')
+        return
+
+    session = torneeka.get_session(room.id)
+    if not session:
+        auth_error('No active game session')
+        return
+    if session.state != 'game_end':
+        auth_error('Round is not finished')
+        return
+
+    new_state = session.start_round()
+    emit('game:new_round', {'state': new_state}, to=room.code)
+    _broadcast_hands(session, room.code)
+    schedule_bot_turns(room.id, room.code)
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +228,19 @@ def _record_round_played(room: Room) -> None:
         user = member.user
         if user and not user.is_bot:
             user.rounds_played = (user.rounds_played or 0) + 1
+    db.session.commit()
+
+
+def _record_torneeka_win(room: Room, session, winner_team: int) -> None:
+    members = RoomPlayer.query.filter_by(room_id=room.id, is_spectator=False).all()
+    for member in members:
+        user = member.user
+        if user and not user.is_bot:
+            if member.team == winner_team:
+                user.wins += 1
+            else:
+                user.losses += 1
+            user.total_points += session.team_scores[member.team]
     db.session.commit()
 
 

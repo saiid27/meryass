@@ -144,6 +144,7 @@ const Map<String, Map<String, String>> appStrings = {
   'team1': {'fr': 'Équipe 1', 'ar': 'الفريق 1'},
   'team2': {'fr': 'Équipe 2', 'ar': 'الفريق 2'},
   'round_result': {'fr': 'Résultat du tour', 'ar': 'نتيجة الجولة'},
+  'winner_label': {'fr': 'Vainqueur', 'ar': 'الفائز'},
   'cot_label': {'fr': '🏆 Cot ! Points doublés', 'ar': '🏆 كوت! النقاط مضاعفة'},
   'next_round': {'fr': 'Prochain tour', 'ar': 'الجولة التالية'},
   'round_points': {'fr': 'Points du tour', 'ar': 'نقاط الجولة'},

@@ -23,6 +23,7 @@ class TorneekaGame:
             for position in sorted(self.players):
                 hands[position].append(deck.pop())
 
+        self.team_scores = {0: 0, 1: 0}
         self.current_round = {
             'hands': hands,
             'draw_pile': deck,

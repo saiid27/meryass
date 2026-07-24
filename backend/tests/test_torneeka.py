@@ -33,6 +33,16 @@ def test_start_round_deals_five_cards_and_random_turn(monkeypatch):
     assert all(len(g.get_hand(pos)) == 5 for pos in range(4))
 
 
+def test_start_round_resets_previous_torneeka_winner_score(monkeypatch):
+    monkeypatch.setattr(torneeka_module.random, 'randrange', lambda size: 0)
+    g = _game()
+    g.team_scores = {0: 1, 1: 0}
+
+    state = g.start_round()
+
+    assert state['team_scores'] == {0: 0, 1: 0}
+
+
 def test_same_rank_and_j_can_change_active_suit():
     g = _game()
     g.current_round = {
