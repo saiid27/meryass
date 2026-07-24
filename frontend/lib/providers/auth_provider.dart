@@ -29,13 +29,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> register(String username, String email, String password) async {
+  Future<void> register(String username, String phone, String password) async {
     _loading = true;
     notifyListeners();
     try {
       final data = await ApiService.register(
         username: username,
-        email: email,
+        phone: phone,
         password: password,
       );
       await _handleAuthResponse(data);

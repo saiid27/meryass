@@ -7,10 +7,7 @@ const Map<String, Map<String, String>> appStrings = {
     'fr': 'Jeu de cartes en ligne',
     'ar': 'لعبة ورق عبر الإنترنت',
   },
-  'username_or_email': {
-    'fr': 'Nom d\'utilisateur ou email',
-    'ar': 'اسم المستخدم أو البريد الإلكتروني',
-  },
+  'phone_number': {'fr': 'Numéro de téléphone', 'ar': 'رقم الهاتف'},
   'password': {'fr': 'Mot de passe', 'ar': 'كلمة المرور'},
   'login': {'fr': 'Connexion', 'ar': 'تسجيل الدخول'},
   'no_account': {
@@ -40,6 +37,7 @@ const Map<String, Map<String, String>> appStrings = {
   'min_3_chars': {'fr': 'Minimum 3 caractères', 'ar': '3 أحرف على الأقل'},
   'min_6_chars': {'fr': 'Minimum 6 caractères', 'ar': '6 أحرف على الأقل'},
   'invalid_email': {'fr': 'Email invalide', 'ar': 'بريد إلكتروني غير صالح'},
+  'invalid_phone': {'fr': 'Numéro invalide', 'ar': 'رقم غير صالح'},
   'passwords_differ': {
     'fr': 'Mots de passe différents',
     'ar': 'كلمتا المرور غير متطابقتين',
@@ -100,6 +98,10 @@ const Map<String, Map<String, String>> appStrings = {
   'profile': {'fr': 'Profil', 'ar': 'الملف الشخصي'},
   'logout': {'fr': 'Déconnexion', 'ar': 'تسجيل الخروج'},
   'username_label': {'fr': 'Nom d\'utilisateur', 'ar': 'اسم المستخدم'},
+  'rounds_played': {'fr': 'Tours joués', 'ar': 'الجولات'},
+  'search_player': {'fr': 'Chercher un joueur', 'ar': 'البحث عن لاعب'},
+  'search_by_phone': {'fr': 'Recherche par numéro', 'ar': 'البحث بالرقم'},
+  'player_found': {'fr': 'Joueur trouvé', 'ar': 'تم العثور على اللاعب'},
   'wins': {'fr': 'Victoires', 'ar': 'انتصارات'},
   'losses': {'fr': 'Défaites', 'ar': 'هزائم'},
   'games': {'fr': 'Parties', 'ar': 'مباريات'},

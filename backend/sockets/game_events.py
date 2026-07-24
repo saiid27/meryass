@@ -75,6 +75,7 @@ def on_play_card(data):
             'result': result.get('round_result'),
             'game_winner': result.get('game_winner'),
         }, to=room.code)
+        _record_round_played(room)
 
         if result['game_winner'] is not None:
             _finish_game(room, session, result['game_winner'])
@@ -144,6 +145,7 @@ def on_mg(data):
         'result': result.get('round_result'),
         'game_winner': result.get('game_winner'),
     }, to=room.code)
+    _record_round_played(room)
 
     if result['game_winner'] is not None:
         _finish_game(room, session, result['game_winner'])
@@ -168,6 +170,15 @@ def _broadcast_hands(session, room_code: str) -> None:
                 'hand': session.get_hand(pos),
                 'position': pos,
             }, to=u.socket_id)
+
+
+def _record_round_played(room: Room) -> None:
+    members = RoomPlayer.query.filter_by(room_id=room.id, is_spectator=False).all()
+    for member in members:
+        user = member.user
+        if user and not user.is_bot:
+            user.rounds_played = (user.rounds_played or 0) + 1
+    db.session.commit()
 
 
 def _finish_game(room: Room, session, winner_team: int) -> None:

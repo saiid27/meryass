@@ -1,5 +1,15 @@
 from extensions import db, bcrypt
 from datetime import datetime
+import re
+
+
+def normalize_phone(value):
+    if value is None:
+        return ''
+    phone = re.sub(r'[\s().-]+', '', str(value).strip())
+    if phone.startswith('00'):
+        phone = '+' + phone[2:]
+    return phone
 
 
 class User(db.Model):
@@ -8,10 +18,12 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    phone = db.Column(db.String(30), unique=True, nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
     avatar = db.Column(db.String(255), default=None)
     wins = db.Column(db.Integer, default=0)
     losses = db.Column(db.Integer, default=0)
+    rounds_played = db.Column(db.Integer, default=0)
     total_points = db.Column(db.Integer, default=0)
     is_online = db.Column(db.Boolean, default=False)
     socket_id = db.Column(db.String(100), default=None)
@@ -34,8 +46,10 @@ class User(db.Model):
             'id': self.id,
             'username': self.username,
             'avatar': self.avatar,
+            'phone': self.phone,
             'wins': self.wins,
             'losses': self.losses,
+            'rounds_played': self.rounds_played,
             'total_points': self.total_points,
             'is_online': self.is_online,
             'is_bot': self.is_bot,

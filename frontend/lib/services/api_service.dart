@@ -60,12 +60,12 @@ class ApiService {
   // Auth
   static Future<Map<String, dynamic>> register({
     required String username,
-    required String email,
+    required String phone,
     required String password,
   }) => _handle(
     () => _dio.post(
       '$_base/auth/register',
-      data: {'username': username, 'email': email, 'password': password},
+      data: {'username': username, 'phone': phone, 'password': password},
     ),
   );
 
@@ -88,6 +88,13 @@ class ApiService {
   static Future<Map<String, dynamic>> getUser(int userId) async {
     await _setAuth();
     return _handle(() => _dio.get('$_base/users/$userId'));
+  }
+
+  static Future<Map<String, dynamic>> searchUserByPhone(String phone) async {
+    await _setAuth();
+    return _handle(
+      () => _dio.get('$_base/users/search', queryParameters: {'phone': phone}),
+    );
   }
 
   static Future<Map<String, dynamic>> updateProfile(

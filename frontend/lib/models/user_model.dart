@@ -2,9 +2,11 @@ class UserModel {
   final int id;
   final String username;
   final String? email;
+  final String? phone;
   final String? avatar;
   final int wins;
   final int losses;
+  final int roundsPlayed;
   final int totalPoints;
   final bool isOnline;
   final bool isBot;
@@ -13,9 +15,11 @@ class UserModel {
     required this.id,
     required this.username,
     this.email,
+    this.phone,
     this.avatar,
     this.wins = 0,
     this.losses = 0,
+    this.roundsPlayed = 0,
     this.totalPoints = 0,
     this.isOnline = false,
     this.isBot = false,
@@ -26,9 +30,11 @@ class UserModel {
       id: json['id'],
       username: json['username'],
       email: json['email'],
+      phone: json['phone'],
       avatar: json['avatar'],
       wins: json['wins'] ?? 0,
       losses: json['losses'] ?? 0,
+      roundsPlayed: json['rounds_played'] ?? 0,
       totalPoints: json['total_points'] ?? 0,
       isOnline: json['is_online'] ?? false,
       isBot: json['is_bot'] ?? false,

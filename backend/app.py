@@ -64,6 +64,7 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
         _ensure_room_schema()
+        _ensure_user_schema()
 
     return app
 
@@ -78,6 +79,20 @@ def _ensure_room_schema():
             text("ALTER TABLE rooms ADD COLUMN scoring_mode VARCHAR(20) DEFAULT 'zero'")
         )
         db.session.commit()
+
+
+def _ensure_user_schema():
+    inspector = inspect(db.engine)
+    if not inspector.has_table('users'):
+        return
+    columns = {column['name'] for column in inspector.get_columns('users')}
+    if 'phone' not in columns:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(30)"))
+    if 'rounds_played' not in columns:
+        db.session.execute(
+            text("ALTER TABLE users ADD COLUMN rounds_played INTEGER DEFAULT 0")
+        )
+    db.session.commit()
 
 
 if __name__ == '__main__':

@@ -1,10 +1,10 @@
 """Integration coverage for development bots in public rooms."""
 
 
-def _register(client, username, email):
+def _register(client, username, phone):
     response = client.post('/api/auth/register', json={
         'username': username,
-        'email': email,
+        'phone': phone,
         'password': 'Pass1234',
     })
     assert response.status_code == 201
@@ -16,7 +16,7 @@ def _auth(token):
 
 
 def test_public_room_is_filled_with_three_ready_bots(client):
-    token = _register(client, 'bot-owner-public', 'bot-owner-public@test.com')
+    token = _register(client, 'bot-owner-public', '23000001')
     response = client.post('/api/rooms/', json={
         'name': 'Public bot room',
         'is_private': False,
@@ -33,7 +33,7 @@ def test_public_room_is_filled_with_three_ready_bots(client):
 
 
 def test_private_room_has_no_bots(client):
-    token = _register(client, 'bot-owner-private', 'bot-owner-private@test.com')
+    token = _register(client, 'bot-owner-private', '23000002')
     response = client.post('/api/rooms/', json={
         'name': 'Private room',
         'is_private': True,
@@ -44,13 +44,13 @@ def test_private_room_has_no_bots(client):
 
 
 def test_real_player_replaces_a_bot(client):
-    owner_token = _register(client, 'bot-owner-replace', 'bot-owner-replace@test.com')
+    owner_token = _register(client, 'bot-owner-replace', '23000003')
     room = client.post('/api/rooms/', json={
         'name': 'Replace bot room',
         'is_private': False,
     }, headers=_auth(owner_token)).get_json()['room']
 
-    guest_token = _register(client, 'bot-real-guest', 'bot-real-guest@test.com')
+    guest_token = _register(client, 'bot-real-guest', '23000004')
     joined = client.post(
         f"/api/rooms/{room['code']}/join",
         json={'spectator': False},

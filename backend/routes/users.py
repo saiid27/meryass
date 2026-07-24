@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from PIL import Image
 from extensions import db
-from models.user import User
+from models.user import User, normalize_phone
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
@@ -30,6 +30,18 @@ def _verify_image(stream) -> Optional[str]:
 @jwt_required()
 def get_user(user_id):
     user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify({'user': user.to_dict()}), 200
+
+
+@users_bp.route('/search', methods=['GET'])
+@jwt_required()
+def search_user():
+    phone = normalize_phone(request.args.get('phone', ''))
+    if not phone:
+        return jsonify({'error': 'Phone is required'}), 400
+    user = User.query.filter_by(phone=phone).first()
     if not user:
         return jsonify({'error': 'User not found'}), 404
     return jsonify({'user': user.to_dict()}), 200

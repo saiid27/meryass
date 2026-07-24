@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from extensions import db
-from models.user import User
+from models.user import User, normalize_phone
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -10,22 +10,30 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 def register():
     data = request.get_json()
     username = data.get('username', '').strip()
+    phone = normalize_phone(data.get('phone') or data.get('email'))
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
 
-    if not username or not email or not password:
+    if not username or not phone or not password:
         return jsonify({'error': 'All fields are required'}), 400
     if len(username) < 3 or len(username) > 50:
         return jsonify({'error': 'Username must be 3–50 characters'}), 400
+    if len(phone.replace('+', '')) < 6 or not phone.replace('+', '').isdigit():
+        return jsonify({'error': 'Invalid phone number'}), 400
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
 
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already taken'}), 409
-    if User.query.filter_by(email=email).first():
+    if User.query.filter_by(phone=phone).first():
+        return jsonify({'error': 'Phone already registered'}), 409
+    if email and User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 409
 
-    user = User(username=username, email=email)
+    if not email:
+        email = f'{phone.replace("+", "00")}@phone.meryas'
+
+    user = User(username=username, email=email, phone=phone)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -37,11 +45,14 @@ def register():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    identifier = data.get('identifier', '').strip()  # username or email
+    identifier = data.get('identifier', '').strip()
+    phone = normalize_phone(identifier)
     password = data.get('password', '')
 
     user = User.query.filter(
-        (User.email == identifier.lower()) | (User.username == identifier)
+        (User.phone == phone) |
+        (User.email == identifier.lower()) |
+        (User.username == identifier)
     ).first()
 
     if not user or not user.check_password(password):

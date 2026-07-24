@@ -201,6 +201,18 @@ def _finish_game(room, session, winner_team: int) -> None:
     db.session.commit()
 
 
+def _record_round_played(room) -> None:
+    members = RoomPlayer.query.filter_by(
+        room_id=room.id,
+        is_spectator=False,
+    ).all()
+    for member in members:
+        user = member.user
+        if user and not is_bot_user(user):
+            user.rounds_played = (user.rounds_played or 0) + 1
+    db.session.commit()
+
+
 def _run_bot_turns(app, room_id: int, room_code: str) -> None:
     try:
         with app.app_context():
@@ -242,6 +254,7 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                             },
                             to=room_code,
                         )
+                        _record_round_played(room)
                         if result['game_winner'] is not None:
                             _finish_game(room, session, result['game_winner'])
                             remove_session(room_id)
@@ -298,6 +311,7 @@ def _run_bot_turns(app, room_id: int, room_code: str) -> None:
                             },
                             to=room_code,
                         )
+                        _record_round_played(room)
                         if result['game_winner'] is not None:
                             _finish_game(room, session, result['game_winner'])
                             remove_session(room_id)

@@ -60,9 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         TextFormField(
                           controller: _identifierCtrl,
+                          keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
-                            labelText: context.tr('username_or_email'),
-                            prefixIcon: const Icon(Icons.person_outline),
+                            labelText: context.tr('phone_number'),
+                            prefixIcon: const Icon(Icons.phone_outlined),
                           ),
                           validator: (v) => v == null || v.trim().isEmpty
                               ? context.tr('field_required')

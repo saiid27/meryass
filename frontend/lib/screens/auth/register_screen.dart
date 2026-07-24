@@ -15,7 +15,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _obscure = true;
@@ -24,7 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _usernameCtrl.dispose();
-    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
@@ -36,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       await context.read<AuthProvider>().register(
         _usernameCtrl.text.trim(),
-        _emailCtrl.text.trim().toLowerCase(),
+        _phoneCtrl.text.trim(),
         _passwordCtrl.text,
       );
     } catch (e) {
@@ -77,17 +77,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    labelText: context.tr('email'),
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: context.tr('phone_number'),
+                    prefixIcon: const Icon(Icons.phone_outlined),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return context.tr('field_required');
                     }
-                    if (!v.contains('@')) return context.tr('invalid_email');
+                    final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                    if (digits.length < 6) return context.tr('invalid_phone');
                     return null;
                   },
                 ),
