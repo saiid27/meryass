@@ -39,6 +39,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _phoneCtrl.text.trim(),
         _passwordCtrl.text,
       );
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     }
