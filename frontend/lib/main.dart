@@ -70,7 +70,11 @@ class _RootState extends State<_Root> {
   }
 
   Future<void> _init() async {
-    await context.read<AuthProvider>().tryAutoLogin();
+    await Future.wait([
+      context.read<AuthProvider>().tryAutoLogin(),
+      Future<void>.delayed(const Duration(seconds: 3)),
+    ]);
+    if (!mounted) return;
     setState(() => _initialized = true);
   }
 
@@ -78,15 +82,23 @@ class _RootState extends State<_Root> {
   Widget build(BuildContext context) {
     if (!_initialized) {
       return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.style, size: 64, color: AppTheme.gold),
-              SizedBox(height: 16),
-              CircularProgressIndicator(color: AppTheme.gold),
-            ],
-          ),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image(
+              image: AssetImage('assets/images/splash_intro.png'),
+              fit: BoxFit.cover,
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black26, Colors.transparent, Colors.black38],
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
