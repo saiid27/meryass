@@ -26,9 +26,9 @@ def remove_one_bot(room) -> bool:
     return False
 
 
-def auto_fill_public_room(room) -> list[RoomPlayer]:
-    """Fill every vacant player position in a waiting public room with bots."""
-    if not bots_enabled() or room.is_private or room.status != 'waiting':
+def fill_vacant_positions_with_bots(room) -> list[RoomPlayer]:
+    """Fill every vacant player position in a waiting room with ready bots."""
+    if room.status != 'waiting':
         return []
 
     members = room.players.filter_by(is_spectator=False).all()
@@ -63,3 +63,10 @@ def auto_fill_public_room(room) -> list[RoomPlayer]:
 
     db.session.flush()
     return created
+
+
+def auto_fill_public_room(room) -> list[RoomPlayer]:
+    """Fill every vacant player position in a waiting public room with bots."""
+    if not bots_enabled() or room.is_private:
+        return []
+    return fill_vacant_positions_with_bots(room)

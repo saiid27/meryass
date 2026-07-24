@@ -114,6 +114,11 @@ class RoomProvider extends ChangeNotifier {
     updateRoomState(data);
   }
 
+  Future<void> fillWithBots(String code) async {
+    final data = await ApiService.fillRoomWithBots(code);
+    updateRoomState(data);
+  }
+
   Future<void> assignSeat(String code, int position, int memberId) async {
     final data = await ApiService.assignRoomSeat(
       code: code,

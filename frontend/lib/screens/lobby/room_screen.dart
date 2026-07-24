@@ -130,7 +130,14 @@ class _RoomScreenState extends State<RoomScreen> {
             if (spectators.isNotEmpty)
               _buildSpectatorsList(spectators, isSupervisor, room),
             const SizedBox(height: 16),
-            if (!isSpectator) _buildBottomActions(auth, isReady, players),
+            if (!isSpectator)
+              _buildBottomActions(
+                auth,
+                isReady,
+                players,
+                isSupervisor: isSupervisor,
+                room: room,
+              ),
             const SizedBox(height: 16),
           ],
         ),
@@ -407,16 +414,54 @@ class _RoomScreenState extends State<RoomScreen> {
     }
   }
 
+  Future<void> _fillWithBots() async {
+    try {
+      await context.read<RoomProvider>().fillWithBots(widget.roomCode);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   Widget _buildBottomActions(
     AuthProvider auth,
     bool isReady,
-    List<RoomPlayerModel> players,
-  ) {
+    List<RoomPlayerModel> players, {
+    required bool isSupervisor,
+    required RoomModel? room,
+  }) {
     final allReady = players.length == 4 && players.every((p) => p.isReady);
+    final canFillWithBots =
+        isSupervisor && room?.status == 'waiting' && players.length == 2;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
+          if (canFillWithBots) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _fillWithBots,
+                icon: const Icon(Icons.smart_toy_outlined),
+                label: Text(context.tr('add_bots')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.gold,
+                  side: const BorderSide(color: AppTheme.gold),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 8),
+              child: Text(
+                context.tr('add_bots_hint'),
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
           if (!isReady)
             SizedBox(
               width: double.infinity,

@@ -178,6 +178,11 @@ class ApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> fillRoomWithBots(String code) async {
+    await _setAuth();
+    return _handle(() => _dio.post('$_base/rooms/$code/bots/fill'));
+  }
+
   static Future<Map<String, dynamic>> assignRoomSeat({
     required String code,
     required int position,

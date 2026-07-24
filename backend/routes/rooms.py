@@ -2,7 +2,11 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db, socketio
 from models.room import Room, RoomPlayer
-from dev_bots import auto_fill_public_room, remove_one_bot
+from dev_bots import (
+    auto_fill_public_room,
+    fill_vacant_positions_with_bots,
+    remove_one_bot,
+)
 
 rooms_bp = Blueprint('rooms', __name__, url_prefix='/api/rooms')
 
@@ -146,6 +150,28 @@ def bench_player(code, member_id):
     member.is_spectator = True
     member.is_ready = False
     db.session.flush()
+    db.session.commit()
+    return _room_state_response(room)
+
+
+@rooms_bp.route('/<string:code>/bots/fill', methods=['POST'])
+@jwt_required()
+def fill_room_bots(code):
+    user_id = int(get_jwt_identity())
+    room = Room.query.filter_by(code=code).first_or_404()
+    if room.creator_id != user_id:
+        return jsonify({'error': 'Only the room supervisor can add bots'}), 403
+    if room.status != 'waiting':
+        return jsonify({'error': 'Bots can only be added before the game starts'}), 400
+
+    player_count = room.player_count
+    if player_count != 2:
+        return jsonify({'error': 'Bots can only be added when exactly two players are seated'}), 400
+
+    created = fill_vacant_positions_with_bots(room)
+    if not created:
+        return jsonify({'error': 'No empty seats available'}), 400
+
     db.session.commit()
     return _room_state_response(room)
 

@@ -90,6 +90,11 @@ const Map<String, Map<String, String>> appStrings = {
   'move_to_spectators': {'fr': 'Mettre spectateur', 'ar': 'استبدال اللاعب'},
   'seat_player': {'fr': 'Placer', 'ar': 'إدخال'},
   'choose_seat': {'fr': 'Choisir une place', 'ar': 'اختر المقعد'},
+  'add_bots': {'fr': 'Ajouter 2 bots', 'ar': 'إضافة بوتين'},
+  'add_bots_hint': {
+    'fr': 'Compléter la salle avec deux bots',
+    'ar': 'إكمال الغرفة ببوتين',
+  },
 
   // ── Profile ─────────────────────────────────────────────────────────────
   'profile': {'fr': 'Profil', 'ar': 'الملف الشخصي'},
